@@ -9,6 +9,8 @@ export default {
     tint: tintColorLight,
     surface: '#FFFFFF',
     tertiary: '#E2C275',
+    activeIndicator: '#585654',
+    inactiveIndicator: '#E6E2DC',
   },
   dark: {
     text: '#BCAAA4',
@@ -17,5 +19,7 @@ export default {
     tint: tintColorDark,
     surface: "#2D1E26",
     tertiary: '#D4AF37',
+    activeIndicator: '#E6E2DC',
+    inactiveIndicator: '#585654',
   },
 };
