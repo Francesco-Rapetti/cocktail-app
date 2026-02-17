@@ -35,7 +35,7 @@ function Carousel<T>({
 	footer,
 	autoplay = false,
 	autoplayInterval = 3000,
-	dotsVisible = true,
+	dotsVisible = false,
 	slideCentered = false,
 	freeSlide = false,
 	loop = false,
@@ -177,7 +177,7 @@ function Carousel<T>({
 				removeClippedSubviews={false}
 				contentContainerStyle={{
 					paddingHorizontal:
-						slideCentered && !freeSlide ? sidePadding : undefined,
+						slideCentered && !freeSlide ? sidePadding : gap,
 					paddingBottom: 8,
 				}}
 			/>
