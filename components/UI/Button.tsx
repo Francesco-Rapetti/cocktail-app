@@ -25,8 +25,8 @@ export interface ButtonProps {
 	onPress: () => void;
 	mode?: "square" | "circle";
 	isLoading?: boolean;
-	backgroundColor?: string;
-	labelColor?: string;
+	backgroundColor: string;
+	labelColor: string;
 	IconLeft?: React.ElementType;
 	IconRight?: React.ElementType;
 	style?: StyleProp<ViewStyle>;
@@ -39,18 +39,17 @@ const Button: React.FC<ButtonProps> = ({
 	onPress,
 	mode = "circle",
 	isLoading = false,
-	backgroundColor = "#007AFF",
-	labelColor = "#FFFFFF",
+	backgroundColor,
+	labelColor,
 	IconLeft,
 	IconRight,
 	style,
 	labelStyle,
 	disabled = false,
 }) => {
-	// 1. Valori condivisi
 	const scale = useSharedValue(1);
 	const loadingOpacity = useSharedValue(isLoading ? 1 : 0);
-	const pressOpacity = useSharedValue(1); // Nuova animazione per l'opacità al tocco
+	const pressOpacity = useSharedValue(1);
 
 	useEffect(() => {
 		loadingOpacity.value = withTiming(isLoading ? 1 : 0, { duration: 150 });
@@ -58,16 +57,22 @@ const Button: React.FC<ButtonProps> = ({
 
 	const handlePressIn = () => {
 		if (!isLoading && !disabled) {
-			scale.value = withSpring(0.95, { damping: 30, stiffness: 500 });
-			// Riduciamo l'opacità al tocco (effetto feedback)
+			scale.value = withSpring(0.95, {
+				damping: 30,
+				stiffness: 500,
+				mass: 1,
+			});
 			pressOpacity.value = withTiming(0.6, { duration: 150 });
 		}
 	};
 
 	const handlePressOut = () => {
 		if (!isLoading && !disabled) {
-			scale.value = withSpring(1, { damping: 30, stiffness: 500 });
-			// Ripristiniamo l'opacità
+			scale.value = withSpring(1, {
+				damping: 30,
+				stiffness: 500,
+				mass: 1,
+			});
 			pressOpacity.value = withTiming(1, { duration: 150 });
 		}
 	};
@@ -82,19 +87,14 @@ const Button: React.FC<ButtonProps> = ({
 		};
 	});
 
-	// 2. Combinazione delle opacità
 	const rContentStyle = useAnimatedStyle(() => {
-		// Opacità dovuta al caricamento (0 = visibile, 1 = invisibile)
 		const loadingAlpha = interpolate(
 			loadingOpacity.value,
 			[0, 1],
-			[1, 0], // Se sta caricando (1), il testo diventa 0
+			[1, 0],
 			Extrapolation.CLAMP,
 		);
 
-		// L'opacità finale è: (Stato Caricamento) * (Stato Pressione)
-		// Esempio: Se carico (0) * premo (0.6) = 0 (invisibile)
-		// Esempio: Se non carico (1) * premo (0.6) = 0.6 (effetto tocco)
 		return {
 			opacity: loadingAlpha * pressOpacity.value,
 		};
@@ -118,7 +118,6 @@ const Button: React.FC<ButtonProps> = ({
 			onPressOut={handlePressOut}
 			style={[styles.container, { borderRadius }, style, rButtonStyle]}
 			disabled={isLoading || disabled}>
-			{/* Il contentContainer ora risponde sia al caricamento che al tocco */}
 			<Animated.View style={[styles.contentContainer, rContentStyle]}>
 				{IconLeft && (
 					<View style={styles.iconLeft}>
