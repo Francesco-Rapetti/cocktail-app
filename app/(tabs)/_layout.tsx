@@ -2,7 +2,7 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Tabs } from "expo-router";
 import React from "react";
 
-import TabBar from "@/components/UI/TabBar";
+import TabBar from "@/components/UI/TabBar/TabBar";
 import Colors from "@/constants/Colors";
 import { useColorScheme } from "react-native";
 
