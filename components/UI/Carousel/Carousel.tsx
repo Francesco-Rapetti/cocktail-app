@@ -45,8 +45,13 @@ function Carousel<T>({
 }: CarouselProps<T>) {
 	const [containerWidth, setContainerWidth] = useState(0);
 
+	const calculatedWidth =
+		containerWidth > 0
+			? containerWidth - (slideCentered ? gap * 2 : gap)
+			: 0;
+
 	const activeWidth =
-		itemWidth || containerWidth - (slideCentered ? gap * 2 : gap);
+		itemWidth || (calculatedWidth > 0 ? calculatedWidth : 0);
 
 	const totalItemWidth = activeWidth + gap;
 
@@ -128,7 +133,7 @@ function Carousel<T>({
 		});
 	};
 
-	if (activeWidth === 0) {
+	if (activeWidth <= 0) {
 		return <View style={[styles.container, style]} onLayout={onLayout} />;
 	}
 
