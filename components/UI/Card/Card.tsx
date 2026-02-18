@@ -6,13 +6,15 @@ import BlurContainer from "../BlurContainer";
 import IconButton from "../IconButton";
 import Pressable from "../Pressable";
 
-const JumboCard = ({
+const Card = ({
 	uri,
 	title,
 	subtitle,
 	isFavourite,
 	onFavouritePress,
 	onPress,
+	height = 250,
+	fontSize = 20,
 }: {
 	uri: string;
 	title: string;
@@ -20,6 +22,8 @@ const JumboCard = ({
 	isFavourite: boolean;
 	onFavouritePress: () => void;
 	onPress: () => void;
+	height?: number;
+	fontSize?: number;
 }) => {
 	const theme = useColorScheme() ?? "light";
 
@@ -28,7 +32,7 @@ const JumboCard = ({
 			onPress={onPress}
 			style={[
 				styles.container,
-				{ backgroundColor: Colors[theme].surface },
+				{ backgroundColor: Colors[theme].surface, height: height },
 			]}>
 			<Image
 				source={{
@@ -46,6 +50,7 @@ const JumboCard = ({
 								styles.title,
 								{
 									color: Colors[theme].primaryText,
+									fontSize: fontSize,
 								},
 							]}>
 							{title}
@@ -53,9 +58,9 @@ const JumboCard = ({
 						<Text
 							numberOfLines={2}
 							style={[
-								styles.subtitle,
 								{
 									color: Colors[theme].text,
+									fontSize: fontSize * 0.7,
 								},
 							]}>
 							{subtitle}
@@ -68,7 +73,7 @@ const JumboCard = ({
 								<FontAwesome
 									name="heart"
 									size={24}
-									color={Colors[theme].tint}
+									color={Colors[theme].danger}
 								/>
 							}
 							inactiveIcon={
@@ -87,13 +92,12 @@ const JumboCard = ({
 	);
 };
 
-export default JumboCard;
+export default Card;
 
 const styles = StyleSheet.create({
 	container: {
 		borderRadius: 8,
 		boxShadow: `0 4px 6px rgba(0,0,0,0.1)`,
-		height: 250,
 		overflow: "hidden",
 	},
 	image: { width: "100%", height: "100%", borderRadius: 8 },
@@ -110,6 +114,5 @@ const styles = StyleSheet.create({
 		bottom: 0,
 		width: "100%",
 	},
-	title: { fontWeight: "bold", fontSize: 20 },
-	subtitle: { fontSize: 14 },
+	title: { fontWeight: "bold" },
 });
