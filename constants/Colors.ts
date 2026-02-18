@@ -11,6 +11,7 @@ export default {
     tertiary: '#E2C275',
     activeIndicator: '#585654',
     inactiveIndicator: '#E6E2DC',
+    danger: '#D32F2F',
   },
   dark: {
     text: '#BCAAA4',
@@ -21,5 +22,6 @@ export default {
     tertiary: '#D4AF37',
     activeIndicator: '#E6E2DC',
     inactiveIndicator: '#585654',
+    danger: '#D32F2F',
   },
 };
