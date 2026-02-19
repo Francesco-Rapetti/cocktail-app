@@ -37,6 +37,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     setInitialized: (value) => set({ isInitialized: value }),
 
     toggleFavorite: (cocktail) => {
+        if (!cocktail.idDrink) return;
         const currentFavs = get().favorites;
         const exists = currentFavs.find((c) => c.idDrink === cocktail.idDrink);
 
