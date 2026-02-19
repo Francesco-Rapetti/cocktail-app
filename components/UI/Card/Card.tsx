@@ -1,5 +1,5 @@
+import { FavoriteIcon } from "@/components/icons/FavouriteIcon";
 import Colors from "@/constants/Colors";
-import { FontAwesome } from "@expo/vector-icons";
 import React from "react";
 import { Image, StyleSheet, Text, useColorScheme, View } from "react-native";
 import BlurContainer from "../BlurContainer";
@@ -10,7 +10,7 @@ const Card = ({
 	uri,
 	title,
 	subtitle,
-	isFavourite,
+	drinkId,
 	onFavouritePress,
 	onPress,
 	height = 250,
@@ -19,7 +19,7 @@ const Card = ({
 	uri: string;
 	title: string;
 	subtitle: string;
-	isFavourite: boolean;
+	drinkId: string;
 	onFavouritePress: () => void;
 	onPress: () => void;
 	height?: number;
@@ -69,21 +69,12 @@ const Card = ({
 					<View style={styles.iconContainer}>
 						<IconButton
 							onPress={onFavouritePress}
-							activeIcon={
-								<FontAwesome
-									name="heart"
-									size={24}
-									color={Colors[theme].danger}
+							icon={
+								<FavoriteIcon
+									id={drinkId}
+									size={fontSize * 1.2}
 								/>
 							}
-							inactiveIcon={
-								<FontAwesome
-									name="heart-o"
-									size={24}
-									color={Colors[theme].tint}
-								/>
-							}
-							isActive={isFavourite}
 						/>
 					</View>
 				</View>

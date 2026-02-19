@@ -14,9 +14,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 interface IconButtonProps {
-	activeIcon: React.ReactNode;
-	inactiveIcon?: React.ReactNode;
-	isActive?: boolean;
+	icon: React.ReactNode;
 	onPress?: () => void;
 	isLoading?: boolean;
 	disabled?: boolean;
@@ -26,9 +24,7 @@ interface IconButtonProps {
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const IconButton: React.FC<IconButtonProps> = ({
-	activeIcon,
-	inactiveIcon,
-	isActive = false,
+	icon,
 	onPress,
 	isLoading = false,
 	disabled = false,
@@ -66,8 +62,6 @@ const IconButton: React.FC<IconButtonProps> = ({
 		};
 	});
 
-	const iconToRender = inactiveIcon && !isActive ? inactiveIcon : activeIcon;
-
 	return (
 		<AnimatedPressable
 			onPress={onPress}
@@ -76,11 +70,7 @@ const IconButton: React.FC<IconButtonProps> = ({
 			disabled={disabled || isLoading}
 			hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 			style={[styles.container, rButtonStyle, style]}>
-			{isLoading ? (
-				<ActivityIndicator size="small" color="#000" />
-			) : (
-				iconToRender
-			)}
+			{isLoading ? <ActivityIndicator size="small" color="#000" /> : icon}
 		</AnimatedPressable>
 	);
 };
