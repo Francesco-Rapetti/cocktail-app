@@ -1,3 +1,6 @@
+import { usePersistenceSubscription } from "@/hooks/usePersistenceSubscription";
+import { useAppStore } from "@/stores/AppStore";
+import { InitializeAppUseCase } from "@/useCases/InitializeAppUseCase";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import {
 	DarkTheme,
@@ -20,22 +23,32 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-	const [loaded, error] = useFonts({
+	const [fontsLoaded, fontError] = useFonts({
 		SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
 		...FontAwesome.font,
 	});
 
-	useEffect(() => {
-		if (error) throw error;
-	}, [error]);
+	const isAppInitialized = useAppStore((state) => state.isInitialized);
 
 	useEffect(() => {
-		if (loaded) {
+		if (fontError) throw fontError;
+	}, [fontError]);
+
+	useEffect(() => {
+		const initApp = async () => {
+			const useCase = new InitializeAppUseCase();
+			await useCase.execute();
+		};
+		initApp();
+	}, []);
+
+	useEffect(() => {
+		if (fontsLoaded && isAppInitialized) {
 			SplashScreen.hideAsync();
 		}
-	}, [loaded]);
+	}, [fontsLoaded, isAppInitialized]);
 
-	if (!loaded) {
+	if (!fontsLoaded || !isAppInitialized) {
 		return null;
 	}
 
@@ -44,6 +57,8 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
 	const colorScheme = useColorScheme();
+
+	usePersistenceSubscription();
 
 	return (
 		<ThemeProvider
