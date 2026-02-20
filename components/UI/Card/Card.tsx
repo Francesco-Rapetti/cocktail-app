@@ -18,7 +18,7 @@ const Card = ({
 }: {
 	uri: string;
 	title: string;
-	subtitle: string;
+	subtitle?: string;
 	drinkId: string;
 	onFavouritePress: () => void;
 	onPress: () => void;
@@ -27,6 +27,8 @@ const Card = ({
 }) => {
 	const theme = useColorScheme() ?? "light";
 
+	const hasSubtitle = subtitle && subtitle.trim().length > 0;
+
 	return (
 		<Pressable
 			onPress={onPress}
@@ -34,38 +36,39 @@ const Card = ({
 				styles.container,
 				{ backgroundColor: Colors[theme].surface, height: height },
 			]}>
-			<Image
-				source={{
-					uri: uri,
-				}}
-				style={[styles.image]}
-			/>
+			<Image source={{ uri: uri }} style={[styles.image]} />
 
 			<BlurContainer style={styles.blurContainer}>
 				<View style={styles.overlayContent}>
 					<View style={styles.textContainer}>
 						<Text
-							numberOfLines={1}
+							numberOfLines={hasSubtitle ? 1 : 2}
 							style={[
 								styles.title,
 								{
 									color: Colors[theme].primaryText,
 									fontSize: fontSize,
+									textAlignVertical: hasSubtitle
+										? "auto"
+										: "center",
 								},
 							]}>
 							{title}
 						</Text>
-						<Text
-							numberOfLines={2}
-							style={[
-								{
+
+						{/* Mostriamo il sottotitolo solo se esiste */}
+						{hasSubtitle && (
+							<Text
+								numberOfLines={2}
+								style={{
 									color: Colors[theme].text,
 									fontSize: fontSize * 0.7,
-								},
-							]}>
-							{subtitle}
-						</Text>
+								}}>
+								{subtitle}
+							</Text>
+						)}
 					</View>
+
 					<View style={styles.iconContainer}>
 						<IconButton
 							onPress={onFavouritePress}
