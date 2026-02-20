@@ -16,10 +16,10 @@ const Card = ({
 	height = 250,
 	fontSize = 20,
 }: {
-	uri: string;
-	title: string;
+	uri?: string;
+	title?: string;
 	subtitle?: string;
-	drinkId: string;
+	drinkId?: string;
 	onFavouritePress: () => void;
 	onPress: () => void;
 	height?: number;

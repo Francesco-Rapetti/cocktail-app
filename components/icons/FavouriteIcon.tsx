@@ -7,10 +7,10 @@ export const FavoriteIcon = ({
 	id,
 	size = 24,
 }: {
-	id: string;
+	id?: string;
 	size?: number;
 }) => {
-	const isFavorite = useIsFavorite(id);
+	const isFavorite = id ? useIsFavorite(id) : false;
 	const theme = useColorScheme() ?? "light";
 
 	return (
