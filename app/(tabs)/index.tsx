@@ -110,10 +110,6 @@ export default function Home() {
 		init();
 	}, []);
 
-	useEffect(() => {
-		console.log("[TabOneScreen] Favorites updated:", favorites);
-	}, [favorites]);
-
 	const handleToggleFavorite = useCallback(
 		(item: any) => {
 			toggleFavorite({
