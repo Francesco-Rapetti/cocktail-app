@@ -1,10 +1,17 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import {
 	Animated,
 	LayoutChangeEvent,
 	ListRenderItem,
 	NativeScrollEvent,
 	NativeSyntheticEvent,
+	Platform,
 	StyleProp,
 	StyleSheet,
 	View,
@@ -52,36 +59,33 @@ function Carousel<T>({
 
 	const activeWidth =
 		itemWidth || (calculatedWidth > 0 ? calculatedWidth : 0);
-
 	const totalItemWidth = activeWidth + gap;
 
+	const activeIndexRef = useRef(0);
 	const scrollX = useRef(new Animated.Value(0)).current;
 	const flatListRef = useRef<Animated.FlatList<T>>(null);
-	const [activeIndex, setActiveIndex] = useState(0);
 
 	const isAutoplayEnabled = freeSlide ? false : autoplay;
 	const areDotsVisible = freeSlide ? false : dotsVisible;
-	const isPagingEnabled = freeSlide ? false : true;
 
-	const snapAlignment = freeSlide
-		? undefined
-		: slideCentered
-			? "start"
-			: "start";
+	const snapAlignment = freeSlide ? undefined : "start";
 
-	const onLayout = (event: LayoutChangeEvent) => {
-		const { width } = event.nativeEvent.layout;
-		if (width && width !== containerWidth) {
-			setContainerWidth(width);
-		}
-	};
+	const onLayout = useCallback(
+		(event: LayoutChangeEvent) => {
+			const { width } = event.nativeEvent.layout;
+			if (width && Math.abs(width - containerWidth) > 1) {
+				setContainerWidth(width);
+			}
+		},
+		[containerWidth],
+	);
 
 	useEffect(() => {
 		let interval: ReturnType<typeof setInterval>;
 
 		if (isAutoplayEnabled && data.length > 0 && totalItemWidth > 0) {
 			interval = setInterval(() => {
-				let nextIndex = activeIndex + 1;
+				let nextIndex = activeIndexRef.current + 1;
 
 				if (nextIndex >= data.length) {
 					if (loop) {
@@ -92,11 +96,11 @@ function Carousel<T>({
 					}
 				}
 
+				activeIndexRef.current = nextIndex;
 				flatListRef.current?.scrollToOffset({
 					offset: nextIndex * totalItemWidth,
 					animated: true,
 				});
-				setActiveIndex(nextIndex);
 			}, autoplayInterval);
 		}
 
@@ -104,7 +108,6 @@ function Carousel<T>({
 			if (interval) clearInterval(interval);
 		};
 	}, [
-		activeIndex,
 		isAutoplayEnabled,
 		data.length,
 		loop,
@@ -116,28 +119,64 @@ function Carousel<T>({
 		(event: NativeSyntheticEvent<NativeScrollEvent>) => {
 			const position = event.nativeEvent.contentOffset.x;
 			if (totalItemWidth > 0) {
-				const index = Math.round(position / totalItemWidth);
-				setActiveIndex(index);
+				activeIndexRef.current = Math.round(position / totalItemWidth);
 			}
 		},
 		[totalItemWidth],
 	);
 
-	const onScrollToIndexFailed = (info: { index: number }) => {
-		const wait = new Promise((resolve) => setTimeout(resolve, 500));
-		wait.then(() => {
-			flatListRef.current?.scrollToOffset({
-				offset: info.index * totalItemWidth,
-				animated: true,
-			});
-		});
-	};
+	const onScrollToIndexFailed = useCallback(
+		(info: { index: number }) => {
+			setTimeout(() => {
+				flatListRef.current?.scrollToOffset({
+					offset: info.index * totalItemWidth,
+					animated: true,
+				});
+			}, 500);
+		},
+		[totalItemWidth],
+	);
+
+	const renderCarouselItem = useCallback(
+		({ item, index }: any) => {
+			const isLastItem = index === data.length - 1;
+			return (
+				<View
+					style={{
+						width: activeWidth,
+						marginRight: isLastItem ? 0 : gap,
+						overflow: "visible",
+					}}>
+					{renderItem({ item, index } as any)}
+				</View>
+			);
+		},
+		[activeWidth, gap, data.length, renderItem],
+	);
+
+	const handleScroll = useMemo(
+		() =>
+			Animated.event(
+				[{ nativeEvent: { contentOffset: { x: scrollX } } }],
+				{ useNativeDriver: false },
+			),
+		[scrollX],
+	);
+
+	const contentContainerStyle = useMemo(
+		() => ({
+			paddingHorizontal:
+				slideCentered && !freeSlide
+					? (containerWidth - activeWidth) / 2
+					: gap,
+			paddingBottom: 8,
+		}),
+		[slideCentered, freeSlide, containerWidth, activeWidth, gap],
+	);
 
 	if (activeWidth <= 0) {
 		return <View style={[styles.container, style]} onLayout={onLayout} />;
 	}
-
-	const sidePadding = (containerWidth - activeWidth) / 2;
 
 	return (
 		<View style={[styles.container, style]} onLayout={onLayout}>
@@ -146,27 +185,11 @@ function Carousel<T>({
 			<Animated.FlatList<any>
 				ref={flatListRef}
 				data={data}
-				renderItem={({ item, index }) => {
-					const isLastItem = index === data.length - 1;
-
-					return (
-						<View
-							style={{
-								width: activeWidth,
-								marginRight: isLastItem ? 0 : gap,
-								overflow: "visible",
-							}}>
-							{renderItem({ item, index } as any)}
-						</View>
-					);
-				}}
+				renderItem={renderCarouselItem}
 				keyExtractor={(_, index) => index.toString()}
 				horizontal
 				showsHorizontalScrollIndicator={false}
-				onScroll={Animated.event(
-					[{ nativeEvent: { contentOffset: { x: scrollX } } }],
-					{ useNativeDriver: false },
-				)}
+				onScroll={handleScroll}
 				scrollEventThrottle={16}
 				pagingEnabled={false}
 				snapToInterval={freeSlide ? undefined : totalItemWidth}
@@ -174,12 +197,11 @@ function Carousel<T>({
 				decelerationRate={freeSlide ? "normal" : "fast"}
 				onMomentumScrollEnd={onMomentumScrollEnd}
 				onScrollToIndexFailed={onScrollToIndexFailed}
-				removeClippedSubviews={false}
-				contentContainerStyle={{
-					paddingHorizontal:
-						slideCentered && !freeSlide ? sidePadding : gap,
-					paddingBottom: 8,
-				}}
+				initialNumToRender={3}
+				maxToRenderPerBatch={3}
+				windowSize={5}
+				removeClippedSubviews={Platform.OS === "android"}
+				contentContainerStyle={contentContainerStyle}
 			/>
 
 			{areDotsVisible && (
@@ -208,4 +230,4 @@ const styles = StyleSheet.create({
 	},
 });
 
-export default Carousel;
+export default React.memo(Carousel) as typeof Carousel;

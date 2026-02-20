@@ -13,20 +13,15 @@ const BlurContainer = ({
 	const theme = useColorScheme() ?? "light";
 	return (
 		<View style={[style]}>
-			<BlurView
-				intensity={50}
-				experimentalBlurMethod="dimezisBlurView"
-				style={StyleSheet.absoluteFill}
-			/>
+			{Platform.OS === "ios" && (
+				<BlurView intensity={50} style={StyleSheet.absoluteFill} />
+			)}
 			<View
 				style={[
 					styles.overlay,
 					{
 						backgroundColor: Colors[theme].surface,
-						opacity:
-							Platform.OS === "ios" || theme === "dark"
-								? 0.7
-								: 0.5,
+						opacity: Platform.OS === "ios" ? 0.7 : 0.9,
 					},
 				]}
 			/>

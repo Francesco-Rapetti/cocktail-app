@@ -1,5 +1,5 @@
 import Colors from "@/constants/Colors";
-import React from "react";
+import React, { useMemo } from "react";
 import { Animated, StyleSheet, useColorScheme, View } from "react-native";
 
 interface PaginationDotsProps {
@@ -18,33 +18,45 @@ export const PaginationDots = ({
 }: PaginationDotsProps) => {
 	const theme = useColorScheme() ?? "light";
 
-	const inputRange = data.map((_, i) => i * screenWidth);
-	const outputRange = data.map((_, i) => i * (dotSize + gap));
-
-	const translateX = scrollX.interpolate({
-		inputRange,
-		outputRange,
-		extrapolate: "clamp",
-	});
-
-	const widthInputRange: number[] = [];
-	const widthOutputRange: number[] = [];
-
-	data.forEach((_, i) => {
-		widthInputRange.push(i * screenWidth);
-		widthOutputRange.push(dotSize);
-
-		if (i < data.length - 1) {
-			widthInputRange.push(i * screenWidth + screenWidth / 2);
-			widthOutputRange.push(dotSize * 2);
+	const { translateX, indicatorWidth } = useMemo(() => {
+		if (!data || data.length === 0 || screenWidth <= 0) {
+			return {
+				translateX: new Animated.Value(0),
+				indicatorWidth: new Animated.Value(dotSize),
+			};
 		}
-	});
 
-	const indicatorWidth = scrollX.interpolate({
-		inputRange: widthInputRange,
-		outputRange: widthOutputRange,
-		extrapolate: "clamp",
-	});
+		const translateInputRange = data.map((_, i) => i * screenWidth);
+		const translateOutputRange = data.map((_, i) => i * (dotSize + gap));
+
+		const widthInputRange: number[] = [];
+		const widthOutputRange: number[] = [];
+
+		data.forEach((_, i) => {
+			widthInputRange.push(i * screenWidth);
+			widthOutputRange.push(dotSize);
+
+			if (i < data.length - 1) {
+				widthInputRange.push(i * screenWidth + screenWidth / 2);
+				widthOutputRange.push(dotSize * 2);
+			}
+		});
+
+		return {
+			translateX: scrollX.interpolate({
+				inputRange: translateInputRange,
+				outputRange: translateOutputRange,
+				extrapolate: "clamp",
+			}),
+			indicatorWidth: scrollX.interpolate({
+				inputRange: widthInputRange,
+				outputRange: widthOutputRange,
+				extrapolate: "clamp",
+			}),
+		};
+	}, [data, screenWidth, scrollX]);
+
+	if (!data || data.length === 0) return null;
 
 	return (
 		<View style={styles.PaginationDotsContainer}>

@@ -9,7 +9,7 @@ import { useAppStore } from "@/stores/AppStore";
 import { FontAwesome5 } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
 	FlatList,
 	Platform,
@@ -21,52 +21,50 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+const SKELETON_DATA = [1, 2, 3] as any[];
+const LIST_SECTIONS = ["random", "category", "ingredient", "glass", "type"];
+
 export default function Home() {
 	const theme = useColorScheme() ?? "light";
 	const insets = useSafeAreaInsets();
 	const [refreshing, setRefreshing] = useState(false);
+
+	const [randomFilters, setRandomFilters] = useState({
+		category: "",
+		ingredient: "",
+		glass: "",
+		alcoholic: "",
+	});
+
 	const {
 		cocktails: randomCocktails,
 		loading: randomCocktailsLoading,
-		error: randomCocktailsError,
 		getRandomCocktails,
 	} = useCocktails();
 
 	const {
 		cocktails: cocktailsByCategory,
 		loading: cocktailsByCategoryLoading,
-		error: cocktailsByCategoryError,
 		filterCocktailsByCategory,
 	} = useCocktails();
-	const [randomCategory, setRandomCategory] = useState<string | null>(null);
 
 	const {
 		cocktails: cocktailsByIngredient,
 		loading: cocktailsByIngredientLoading,
-		error: cocktailsByIngredientError,
 		filterCocktailsByIngredient,
 	} = useCocktails();
-	const [randomIngredient, setRandomIngredient] = useState<string | null>(
-		null,
-	);
 
 	const {
 		cocktails: cocktailsByGlass,
 		loading: cocktailsByGlassLoading,
-		error: cocktailsByGlassError,
 		filterCocktailsByGlass,
 	} = useCocktails();
-	const [randomGlass, setRandomGlass] = useState<string | null>(null);
 
 	const {
 		cocktails: cocktailsByAlcoholicFilter,
 		loading: cocktailsByAlcoholicFilterLoading,
-		error: cocktailsByAlcoholicFilterError,
 		filterCocktailsByAlcoholic,
 	} = useCocktails();
-	const [randomAlcoholicFilter, setRandomAlcoholicFilter] = useState<
-		string | null
-	>(null);
 
 	const {
 		categories,
@@ -78,39 +76,35 @@ export default function Home() {
 	} = useAppStore();
 
 	const init = async () => {
-		await getRandomCocktails(5);
-		const randomCategory =
-			categories[Math.floor(Math.random() * categories.length)];
-		if (randomCategory) {
-			filterCocktailsByCategory(randomCategory, true, 5);
-			setRandomCategory(randomCategory);
-		}
-		const randomIngredient =
-			ingredients[Math.floor(Math.random() * ingredients.length)];
-		if (randomIngredient) {
-			filterCocktailsByIngredient(randomIngredient, true, 5);
-			setRandomIngredient(randomIngredient);
-		}
-		const randomGlass = glasses[Math.floor(Math.random() * glasses.length)];
-		if (randomGlass) {
-			filterCocktailsByGlass(randomGlass, true, 5);
-			setRandomGlass(randomGlass);
-		}
-		const randomAlcoholicFilter =
+		const cat = categories[Math.floor(Math.random() * categories.length)];
+		const ing = ingredients[Math.floor(Math.random() * ingredients.length)];
+		const gls = glasses[Math.floor(Math.random() * glasses.length)];
+		const alc =
 			alcoholicFilters[
 				Math.floor(Math.random() * alcoholicFilters.length)
 			];
-		if (randomAlcoholicFilter) {
-			filterCocktailsByAlcoholic(randomAlcoholicFilter, true, 5);
-			setRandomAlcoholicFilter(randomAlcoholicFilter);
-		}
+
+		setRandomFilters({
+			category: cat || "",
+			ingredient: ing || "",
+			glass: gls || "",
+			alcoholic: alc || "",
+		});
+
+		await Promise.all([
+			getRandomCocktails(5),
+			cat ? filterCocktailsByCategory(cat, true, 3) : Promise.resolve(),
+			ing ? filterCocktailsByIngredient(ing, true, 3) : Promise.resolve(),
+			gls ? filterCocktailsByGlass(gls, true, 3) : Promise.resolve(),
+			alc ? filterCocktailsByAlcoholic(alc, true, 3) : Promise.resolve(),
+		]);
 	};
 
-	const onRefresh = async () => {
+	const onRefresh = useCallback(async () => {
 		setRefreshing(true);
 		await init();
 		setRefreshing(false);
-	};
+	}, [categories, ingredients, glasses, alcoholicFilters]);
 
 	useEffect(() => {
 		init();
@@ -120,286 +114,276 @@ export default function Home() {
 		console.log("[TabOneScreen] Favorites updated:", favorites);
 	}, [favorites]);
 
-	const renderHeader = useMemo(
-		() => (title: string, link: string, onPress: () => void) => (
-			<View
-				style={{
-					flexDirection: "row",
-					alignItems: "center",
-					marginBottom: 10,
-					paddingHorizontal: 20,
-					gap: 6,
-				}}>
-				<Text
-					maxFontSizeMultiplier={1}
-					style={{
-						fontSize: 22,
-						fontWeight: "bold",
-					}}>
+	const handleToggleFavorite = useCallback(
+		(item: any) => {
+			toggleFavorite({
+				idDrink: item.idDrink,
+				strDrink: item.strDrink,
+				strDrinkThumb: item.strDrinkThumb,
+			});
+		},
+		[toggleFavorite],
+	);
+
+	const renderHeader = useCallback(
+		(title: string, link: string, onPress: () => void) => (
+			<View style={styles.headerContainer}>
+				<Text maxFontSizeMultiplier={1} style={styles.headerTitle}>
 					{title}
 				</Text>
-
 				{link.length > 0 && (
 					<TouchableOpacity
 						activeOpacity={0.6}
 						onPress={onPress}
-						disabled={link.length === 0 || !onPress}
-						style={{
-							flexShrink: 1,
-							justifyContent: "center",
-						}}>
+						disabled={!onPress}
+						style={styles.headerLinkContainer}>
 						<Text
 							maxFontSizeMultiplier={1}
 							numberOfLines={1}
-							style={{
-								color: Colors[theme].tint,
-								fontSize: 22,
-								fontWeight: "bold",
-								flexWrap: "wrap",
-							}}>
+							style={[
+								styles.headerLink,
+								{ color: Colors[theme].tint },
+							]}>
 							{link}
 						</Text>
 					</TouchableOpacity>
 				)}
 			</View>
 		),
-		[randomCategory, randomIngredient, randomGlass, randomAlcoholicFilter],
+		[theme],
 	);
 
-	const listSections = ["random", "category", "ingredient", "glass", "type"];
-
-	const renderListSection = ({ item: section }: { item: string }) => {
-		switch (section) {
-			case "random":
-				return (
-					<Carousel
-						data={
-							randomCocktails && randomCocktails.length > 0
-								? randomCocktails
-								: ([1, 2, 3] as any[])
-						}
-						renderItem={({ item: carouselItem }) =>
-							carouselItem || !randomCocktailsLoading ? (
-								<Card
-									title={carouselItem.strDrink}
-									subtitle={carouselItem.strCategory}
-									uri={carouselItem.strDrinkThumb}
-									onFavouritePress={() =>
-										toggleFavorite({
-											idDrink: carouselItem.idDrink,
-											strDrink: carouselItem.strDrink,
-											strDrinkThumb:
-												carouselItem.strDrinkThumb,
-										})
-									}
-									drinkId={carouselItem.idDrink}
-									onPress={() => {}}
-								/>
-							) : (
-								<SkeletonCard />
-							)
-						}
-						loop={!randomCocktailsLoading}
-						autoplay={!randomCocktailsLoading}
-						slideCentered
-						autoplayInterval={10000}
-						dotsVisible
-					/>
-				);
-
-			case "category":
-				return (
-					<View style={{ marginTop: 32 }}>
+	const renderListSection = useCallback(
+		({ item: section }: { item: string }) => {
+			switch (section) {
+				case "random":
+					return (
 						<Carousel
-							header={renderHeader(
-								`Drink per categoria`,
-								randomCategory || "",
-								() => {},
-							)}
 							data={
-								cocktailsByCategoryLoading
-									? ([1, 2, 3] as any[])
-									: cocktailsByCategory
+								randomCocktails && randomCocktails.length > 0
+									? randomCocktails
+									: SKELETON_DATA
 							}
 							renderItem={({ item: carouselItem }) =>
-								carouselItem || cocktailsByCategoryLoading ? (
+								carouselItem && !randomCocktailsLoading ? (
 									<Card
 										title={carouselItem.strDrink}
+										subtitle={carouselItem.strCategory}
 										uri={carouselItem.strDrinkThumb}
-										onPress={() => {}}
-										drinkId={carouselItem.idDrink}
 										onFavouritePress={() =>
-											toggleFavorite({
-												idDrink: carouselItem.idDrink,
-												strDrink: carouselItem.strDrink,
-												strDrinkThumb:
-													carouselItem.strDrinkThumb,
-											})
+											handleToggleFavorite(carouselItem)
 										}
-										height={200}
-										fontSize={17}
+										drinkId={carouselItem.idDrink}
+										onPress={() => {}}
 									/>
 								) : (
-									<SkeletonCard height={200} />
+									<SkeletonCard />
 								)
 							}
-							itemWidth={200}
-							freeSlide
+							loop={!randomCocktailsLoading}
+							autoplay={!randomCocktailsLoading}
+							slideCentered
+							autoplayInterval={10000}
+							dotsVisible
 						/>
-					</View>
-				);
+					);
 
-			case "ingredient":
-				return (
-					<View style={{ marginTop: 32 }}>
-						<Carousel
-							header={renderHeader(
-								`Drink per ingrediente`,
-								randomIngredient || "",
-								() => {},
-							)}
-							data={
-								cocktailsByIngredientLoading
-									? ([1, 2, 3] as any[])
-									: cocktailsByIngredient
-							}
-							renderItem={({ item: carouselItem }) =>
-								carouselItem || cocktailsByIngredientLoading ? (
-									<Card
-										title={carouselItem.strDrink}
-										uri={carouselItem.strDrinkThumb}
-										onPress={() => {}}
-										drinkId={carouselItem.idDrink}
-										onFavouritePress={() =>
-											toggleFavorite({
-												idDrink: carouselItem.idDrink,
-												strDrink: carouselItem.strDrink,
-												strDrinkThumb:
-													carouselItem.strDrinkThumb,
-											})
-										}
-										height={200}
-										fontSize={17}
-									/>
-								) : (
-									<SkeletonCard height={200} />
-								)
-							}
-							itemWidth={200}
-							freeSlide
-						/>
-					</View>
-				);
+				case "category":
+					return (
+						<View style={styles.sectionMargin}>
+							<Carousel
+								header={renderHeader(
+									`Drink per categoria`,
+									randomFilters.category,
+									() => {},
+								)}
+								data={
+									cocktailsByCategoryLoading
+										? SKELETON_DATA
+										: cocktailsByCategory
+								}
+								renderItem={({ item: carouselItem }) =>
+									carouselItem &&
+									!cocktailsByCategoryLoading ? (
+										<Card
+											title={carouselItem.strDrink}
+											uri={carouselItem.strDrinkThumb}
+											onPress={() => {}}
+											drinkId={carouselItem.idDrink}
+											onFavouritePress={() =>
+												handleToggleFavorite(
+													carouselItem,
+												)
+											}
+											height={200}
+											fontSize={17}
+										/>
+									) : (
+										<SkeletonCard height={200} />
+									)
+								}
+								itemWidth={200}
+								freeSlide
+							/>
+						</View>
+					);
 
-			case "glass":
-				return (
-					<View style={{ marginTop: 32 }}>
-						<Carousel
-							header={renderHeader(
-								`Drink per bicchiere`,
-								randomGlass || "",
-								() => {},
-							)}
-							data={
-								cocktailsByGlassLoading
-									? ([1, 2, 3] as any[])
-									: cocktailsByGlass
-							}
-							renderItem={({ item: carouselItem }) =>
-								carouselItem || cocktailsByGlassLoading ? (
-									<Card
-										title={carouselItem.strDrink}
-										uri={carouselItem.strDrinkThumb}
-										onPress={() => {}}
-										drinkId={carouselItem.idDrink}
-										onFavouritePress={() =>
-											toggleFavorite({
-												idDrink: carouselItem.idDrink,
-												strDrink: carouselItem.strDrink,
-												strDrinkThumb:
-													carouselItem.strDrinkThumb,
-											})
-										}
-										height={200}
-										fontSize={17}
-									/>
-								) : (
-									<SkeletonCard height={200} />
-								)
-							}
-							itemWidth={200}
-							freeSlide
-						/>
-					</View>
-				);
+				case "ingredient":
+					return (
+						<View style={styles.sectionMargin}>
+							<Carousel
+								header={renderHeader(
+									`Drink per ingrediente`,
+									randomFilters.ingredient,
+									() => {},
+								)}
+								data={
+									cocktailsByIngredientLoading
+										? SKELETON_DATA
+										: cocktailsByIngredient
+								}
+								renderItem={({ item: carouselItem }) =>
+									carouselItem &&
+									!cocktailsByIngredientLoading ? (
+										<Card
+											title={carouselItem.strDrink}
+											uri={carouselItem.strDrinkThumb}
+											onPress={() => {}}
+											drinkId={carouselItem.idDrink}
+											onFavouritePress={() =>
+												handleToggleFavorite(
+													carouselItem,
+												)
+											}
+											height={200}
+											fontSize={17}
+										/>
+									) : (
+										<SkeletonCard height={200} />
+									)
+								}
+								itemWidth={200}
+								freeSlide
+							/>
+						</View>
+					);
 
-			case "type":
-				return (
-					<View style={{ marginTop: 32 }}>
-						<Carousel
-							header={renderHeader(
-								`Drink per tipo`,
-								randomAlcoholicFilter || "",
-								() => {},
-							)}
-							data={
-								cocktailsByAlcoholicFilterLoading
-									? ([1, 2, 3] as any[])
-									: cocktailsByAlcoholicFilter
-							}
-							renderItem={({ item: carouselItem }) =>
-								carouselItem ||
-								cocktailsByAlcoholicFilterLoading ? (
-									<Card
-										title={carouselItem.strDrink}
-										uri={carouselItem.strDrinkThumb}
-										onPress={() => {}}
-										drinkId={carouselItem.idDrink}
-										onFavouritePress={() =>
-											toggleFavorite({
-												idDrink: carouselItem.idDrink,
-												strDrink: carouselItem.strDrink,
-												strDrinkThumb:
-													carouselItem.strDrinkThumb,
-											})
-										}
-										height={200}
-										fontSize={17}
-									/>
-								) : (
-									<SkeletonCard height={200} />
-								)
-							}
-							itemWidth={200}
-							freeSlide
-						/>
-					</View>
-				);
+				case "glass":
+					return (
+						<View style={styles.sectionMargin}>
+							<Carousel
+								header={renderHeader(
+									`Drink per bicchiere`,
+									randomFilters.glass,
+									() => {},
+								)}
+								data={
+									cocktailsByGlassLoading
+										? SKELETON_DATA
+										: cocktailsByGlass
+								}
+								renderItem={({ item: carouselItem }) =>
+									carouselItem && !cocktailsByGlassLoading ? (
+										<Card
+											title={carouselItem.strDrink}
+											uri={carouselItem.strDrinkThumb}
+											onPress={() => {}}
+											drinkId={carouselItem.idDrink}
+											onFavouritePress={() =>
+												handleToggleFavorite(
+													carouselItem,
+												)
+											}
+											height={200}
+											fontSize={17}
+										/>
+									) : (
+										<SkeletonCard height={200} />
+									)
+								}
+								itemWidth={200}
+								freeSlide
+							/>
+						</View>
+					);
 
-			default:
-				return null;
-		}
-	};
+				case "type":
+					return (
+						<View style={styles.sectionMargin}>
+							<Carousel
+								header={renderHeader(
+									`Drink per tipo`,
+									randomFilters.alcoholic,
+									() => {},
+								)}
+								data={
+									cocktailsByAlcoholicFilterLoading
+										? SKELETON_DATA
+										: cocktailsByAlcoholicFilter
+								}
+								renderItem={({ item: carouselItem }) =>
+									carouselItem &&
+									!cocktailsByAlcoholicFilterLoading ? (
+										<Card
+											title={carouselItem.strDrink}
+											uri={carouselItem.strDrinkThumb}
+											onPress={() => {}}
+											drinkId={carouselItem.idDrink}
+											onFavouritePress={() =>
+												handleToggleFavorite(
+													carouselItem,
+												)
+											}
+											height={200}
+											fontSize={17}
+										/>
+									) : (
+										<SkeletonCard height={200} />
+									)
+								}
+								itemWidth={200}
+								freeSlide
+							/>
+						</View>
+					);
+
+				default:
+					return null;
+			}
+		},
+		[
+			randomCocktails,
+			randomCocktailsLoading,
+			cocktailsByCategory,
+			cocktailsByCategoryLoading,
+			randomFilters.category,
+			cocktailsByIngredient,
+			cocktailsByIngredientLoading,
+			randomFilters.ingredient,
+			cocktailsByGlass,
+			cocktailsByGlassLoading,
+			randomFilters.glass,
+			cocktailsByAlcoholicFilter,
+			cocktailsByAlcoholicFilterLoading,
+			randomFilters.alcoholic,
+			handleToggleFavorite,
+			renderHeader,
+		],
+	);
 
 	return (
 		<>
 			<StatusBar style={theme === "dark" ? "light" : "dark"} />
 			<View
-				style={{
-					marginTop: Constants.statusBarHeight + 10,
-					backgroundColor: Colors[theme].surface,
-					paddingHorizontal: 16,
-					paddingVertical: 6,
-					alignItems: "center",
-					justifyContent: "space-between",
-					flexDirection: "row",
-				}}>
+				style={[
+					styles.topBar,
+					{
+						marginTop: Constants.statusBarHeight + 10,
+						backgroundColor: Colors[theme].surface,
+					},
+				]}>
 				<Text style={styles.title}>Home</Text>
-				<View
-					style={{
-						flexDirection: "row",
-						justifyContent: "flex-end",
-					}}>
+				<View style={styles.topBarAction}>
 					<Button
 						IconRight={() => (
 							<FontAwesome5
@@ -417,10 +401,14 @@ export default function Home() {
 			</View>
 
 			<FlatList
-				data={listSections}
+				data={LIST_SECTIONS}
 				keyExtractor={(item) => item}
 				renderItem={renderListSection}
 				showsVerticalScrollIndicator={false}
+				initialNumToRender={2}
+				windowSize={3}
+				maxToRenderPerBatch={2}
+				removeClippedSubviews={Platform.OS === "android"}
 				refreshControl={
 					<RefreshControl
 						refreshing={refreshing}
@@ -432,25 +420,17 @@ export default function Home() {
 						titleColor={Colors[theme].tint}
 					/>
 				}
-				style={[
-					styles.container,
+				style={[styles.container, { zIndex: 1 }]}
+				contentContainerStyle={[
+					styles.listContentContainer,
 					{
-						zIndex: 1,
+						backgroundColor: Colors[theme].background,
+						paddingBottom:
+							insets.bottom +
+							16 +
+							(Platform.OS === "ios" ? 100 : 120),
 					},
 				]}
-				contentContainerStyle={{
-					minHeight: "100%",
-					backgroundColor: Colors[theme].background,
-					borderTopLeftRadius: 18,
-					borderTopRightRadius: 18,
-					marginTop: 10,
-					boxShadow: `0 0 10px rgba(0,0,0,0.1)`,
-					paddingVertical: 16,
-					paddingBottom:
-						insets.bottom +
-						16 +
-						(Platform.OS === "ios" ? 100 : 120),
-				}}
 			/>
 		</>
 	);
@@ -463,5 +443,47 @@ const styles = StyleSheet.create({
 	title: {
 		fontSize: 32,
 		fontWeight: "bold",
+	},
+	topBar: {
+		paddingHorizontal: 16,
+		paddingVertical: 6,
+		alignItems: "center",
+		justifyContent: "space-between",
+		flexDirection: "row",
+	},
+	topBarAction: {
+		flexDirection: "row",
+		justifyContent: "flex-end",
+	},
+	sectionMargin: {
+		marginTop: 32,
+	},
+	headerContainer: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginBottom: 10,
+		paddingHorizontal: 20,
+		gap: 6,
+	},
+	headerTitle: {
+		fontSize: 22,
+		fontWeight: "bold",
+	},
+	headerLinkContainer: {
+		flexShrink: 1,
+		justifyContent: "center",
+	},
+	headerLink: {
+		fontSize: 22,
+		fontWeight: "bold",
+		flexWrap: "wrap",
+	},
+	listContentContainer: {
+		minHeight: "100%",
+		borderTopLeftRadius: 18,
+		borderTopRightRadius: 18,
+		marginTop: 10,
+		paddingVertical: 16,
+		boxShadow: `0 -3px 10px rgba(0,0,0,0.1)`,
 	},
 });
