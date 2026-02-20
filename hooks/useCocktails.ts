@@ -101,13 +101,22 @@ export const useCocktails = () => {
         }
     }, []);
 
-    const filterCocktailsByAlcoholic = useCallback(async (alcoholic: string) => {
+    const filterCocktailsByAlcoholic = useCallback(async (alcoholic: string, randomOrder: boolean = false, cocktailNumber: number | null = null) => {
         setLoading(true);
         setError(null);
 
         try {
             const data = await repository.filterCocktailsByAlcoholic(alcoholic);
-            setCocktails(data as Cocktail[]);
+            let cocktailsData = data as Cocktail[];
+            if (cocktailNumber) {
+                cocktailsData = randomOrder ? cocktailsData.slice(0, cocktailNumber)
+                    : cocktailsData.slice(0, cocktailNumber);
+            }
+            if (randomOrder) {
+                setCocktails(cocktailsData.sort(() => Math.random() - 0.5) as Cocktail[]);
+            } else {
+                setCocktails(cocktailsData as Cocktail[]);
+            }
         } catch (err) {
             setError('Impossibile caricare i cocktail');
         } finally {
@@ -115,13 +124,23 @@ export const useCocktails = () => {
         }
     }, []);
 
-    const filterCocktailsByCategory = useCallback(async (category: string) => {
+    const filterCocktailsByCategory = useCallback(async (category: string, randomOrder: boolean = false, cocktailNumber: number | null = null) => {
         setLoading(true);
         setError(null);
 
         try {
             const data = await repository.filterCocktailsByCategory(category);
-            setCocktails(data as Cocktail[]);
+            let cocktailsData = data as Cocktail[];
+            if (cocktailNumber) {
+                cocktailsData = randomOrder ? cocktailsData.slice(0, cocktailNumber)
+                    : cocktailsData.slice(0, cocktailNumber);
+            }
+            if (randomOrder) {
+                setCocktails(cocktailsData.sort(() => Math.random() - 0.5) as Cocktail[]);
+            } else {
+                setCocktails(cocktailsData as Cocktail[]);
+            }
+
         } catch (err) {
             setError('Impossibile caricare i cocktail');
         } finally {
@@ -129,13 +148,22 @@ export const useCocktails = () => {
         }
     }, []);
 
-    const filterCocktailsByIngredient = useCallback(async (ingredient: string) => {
+    const filterCocktailsByIngredient = useCallback(async (ingredient: string, randomOrder: boolean = false, cocktailNumber: number | null = null) => {
         setLoading(true);
         setError(null);
 
         try {
             const data = await repository.filterCocktailsByIngredient(ingredient);
-            setCocktails(data as Cocktail[]);
+            let cocktailsData = data as Cocktail[];
+            if (cocktailNumber) {
+                cocktailsData = randomOrder ? cocktailsData.slice(0, cocktailNumber)
+                    : cocktailsData.slice(0, cocktailNumber);
+            }
+            if (randomOrder) {
+                setCocktails(cocktailsData.sort(() => Math.random() - 0.5) as Cocktail[]);
+            } else {
+                setCocktails(cocktailsData as Cocktail[]);
+            }
         } catch (err) {
             setError('Impossibile caricare i cocktail');
         } finally {
@@ -143,13 +171,22 @@ export const useCocktails = () => {
         }
     }, []);
 
-    const filterCocktailsByGlass = useCallback(async (glass: string) => {
+    const filterCocktailsByGlass = useCallback(async (glass: string, randomOrder: boolean = false, cocktailNumber: number | null = null) => {
         setLoading(true);
         setError(null);
 
         try {
             const data = await repository.filterCocktailsByGlass(glass);
-            setCocktails(data as Cocktail[]);
+            let cocktailsData = data as Cocktail[];
+            if (cocktailNumber) {
+                cocktailsData = randomOrder ? cocktailsData.slice(0, cocktailNumber)
+                    : cocktailsData.slice(0, cocktailNumber);
+            }
+            if (randomOrder) {
+                setCocktails(cocktailsData.sort(() => Math.random() - 0.5) as Cocktail[]);
+            } else {
+                setCocktails(cocktailsData as Cocktail[]);
+            }
         } catch (err) {
             setError('Impossibile caricare i cocktail');
         } finally {
