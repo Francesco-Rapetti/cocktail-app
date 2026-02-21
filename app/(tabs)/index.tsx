@@ -8,6 +8,7 @@ import { useCocktails } from "@/hooks/useCocktails";
 import { useAppStore } from "@/stores/AppStore";
 import { FontAwesome5 } from "@expo/vector-icons";
 import Constants from "expo-constants";
+import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -26,6 +27,7 @@ const LIST_SECTIONS = ["random", "category", "ingredient", "glass", "type"];
 
 export default function Home() {
 	const theme = useColorScheme() ?? "light";
+	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const [refreshing, setRefreshing] = useState(false);
 
@@ -170,7 +172,14 @@ export default function Home() {
 											handleToggleFavorite(carouselItem)
 										}
 										drinkId={carouselItem.idDrink}
-										onPress={() => {}}
+										onPress={() => {
+											router.push({
+												pathname: "/cocktailDetail",
+												params: {
+													id: carouselItem.idDrink,
+												},
+											});
+										}}
 									/>
 								) : (
 									<SkeletonCard />
@@ -204,7 +213,14 @@ export default function Home() {
 										<Card
 											title={carouselItem.strDrink}
 											uri={carouselItem.strDrinkThumb}
-											onPress={() => {}}
+											onPress={() => {
+												router.push({
+													pathname: "/cocktailDetail",
+													params: {
+														id: carouselItem.idDrink,
+													},
+												});
+											}}
 											drinkId={carouselItem.idDrink}
 											onFavouritePress={() =>
 												handleToggleFavorite(
@@ -244,7 +260,14 @@ export default function Home() {
 										<Card
 											title={carouselItem.strDrink}
 											uri={carouselItem.strDrinkThumb}
-											onPress={() => {}}
+											onPress={() => {
+												router.push({
+													pathname: "/cocktailDetail",
+													params: {
+														id: carouselItem.idDrink,
+													},
+												});
+											}}
 											drinkId={carouselItem.idDrink}
 											onFavouritePress={() =>
 												handleToggleFavorite(
@@ -283,7 +306,14 @@ export default function Home() {
 										<Card
 											title={carouselItem.strDrink}
 											uri={carouselItem.strDrinkThumb}
-											onPress={() => {}}
+											onPress={() => {
+												router.push({
+													pathname: "/cocktailDetail",
+													params: {
+														id: carouselItem.idDrink,
+													},
+												});
+											}}
 											drinkId={carouselItem.idDrink}
 											onFavouritePress={() =>
 												handleToggleFavorite(
@@ -323,7 +353,14 @@ export default function Home() {
 										<Card
 											title={carouselItem.strDrink}
 											uri={carouselItem.strDrinkThumb}
-											onPress={() => {}}
+											onPress={() => {
+												router.push({
+													pathname: "/cocktailDetail",
+													params: {
+														id: carouselItem.idDrink,
+													},
+												});
+											}}
 											drinkId={carouselItem.idDrink}
 											onFavouritePress={() =>
 												handleToggleFavorite(
@@ -389,7 +426,9 @@ export default function Home() {
 							/>
 						)}
 						label="Stupiscimi"
-						onPress={() => {}}
+						onPress={() => {
+							router.push("/cocktailDetail");
+						}}
 						backgroundColor={Colors[theme].tint}
 						labelColor={Colors[theme].background}
 					/>

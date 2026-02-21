@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Card from "@/components/UI/Card/Card";
 import { Text, View } from "@/components/UI/Themed";
 import { useAppStore } from "@/stores/AppStore";
+import { useRouter } from "expo-router";
 
 const EmptyFavorites = () => (
 	<Animated.View
@@ -27,6 +28,7 @@ const EmptyFavorites = () => (
 export default function Favourites() {
 	const theme = useColorScheme() ?? "light";
 	const insets = useSafeAreaInsets();
+	const router = useRouter();
 
 	const favorites = useAppStore((state) => state.favorites);
 	const toggleFavorite = useAppStore((state) => state.toggleFavorite);
@@ -53,7 +55,12 @@ export default function Favourites() {
 					title={item.strDrink}
 					drinkId={item.idDrink}
 					onFavouritePress={() => handleToggleFavorite(item)}
-					onPress={() => {}}
+					onPress={() => {
+						router.push({
+							pathname: "/cocktailDetail",
+							params: { id: item.idDrink },
+						});
+					}}
 				/>
 			</Animated.View>
 		),

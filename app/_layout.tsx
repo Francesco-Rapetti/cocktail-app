@@ -65,6 +65,7 @@ function RootLayoutNav() {
 			value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
 			<Stack screenOptions={{ headerShown: false }}>
 				<Stack.Screen name="(tabs)" />
+				<Stack.Screen name="cocktailDetail" />
 			</Stack>
 		</ThemeProvider>
 	);
