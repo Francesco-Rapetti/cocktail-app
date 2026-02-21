@@ -12,13 +12,13 @@ const BlurContainer = ({
 }) => {
 	const theme = useColorScheme() ?? "light";
 	return (
-		<View style={[style]}>
+		<View style={[style, { overflow: "hidden" }]}>
 			{Platform.OS === "ios" && (
 				<BlurView intensity={50} style={StyleSheet.absoluteFill} />
 			)}
 			<View
 				style={[
-					styles.overlay,
+					StyleSheet.absoluteFill,
 					{
 						backgroundColor: Colors[theme].surface,
 						opacity: Platform.OS === "ios" ? 0.7 : 0.9,
@@ -31,14 +31,3 @@ const BlurContainer = ({
 };
 
 export default BlurContainer;
-
-const styles = StyleSheet.create({
-	overlay: {
-		padding: 12,
-		flex: 1,
-		justifyContent: "center",
-		position: "absolute",
-		width: "100%",
-		height: "100%",
-	},
-});
