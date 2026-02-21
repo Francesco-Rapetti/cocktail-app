@@ -197,6 +197,10 @@ export const useCocktails = () => {
         }
     }, []);
 
+    const clearCocktails = useCallback(() => {
+        setCocktails([]);
+    }, []);
+
     return {
         cocktails,
         cocktail,
@@ -210,5 +214,6 @@ export const useCocktails = () => {
         filterCocktailsByCategory,
         filterCocktailsByIngredient,
         filterCocktailsByGlass,
+        clearCocktails,
     };
 };
