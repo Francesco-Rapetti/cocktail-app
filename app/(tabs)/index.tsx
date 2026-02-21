@@ -10,7 +10,7 @@ import { FontAwesome5 } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	FlatList,
 	Platform,
@@ -24,12 +24,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const SKELETON_DATA = [1, 2, 3] as any[];
 const LIST_SECTIONS = ["random", "category", "ingredient", "glass", "type"];
+const TODO = () => {};
 
 export default function Home() {
 	const theme = useColorScheme() ?? "light";
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const [refreshing, setRefreshing] = useState(false);
+
+	const themeColors = Colors[theme];
 
 	const [randomFilters, setRandomFilters] = useState({
 		category: "",
@@ -71,13 +74,12 @@ export default function Home() {
 	const {
 		categories,
 		ingredients,
-		favorites,
-		alcoholicFilters,
 		glasses,
+		alcoholicFilters,
 		toggleFavorite,
 	} = useAppStore();
 
-	const init = async () => {
+	const init = useCallback(async () => {
 		const cat = categories[Math.floor(Math.random() * categories.length)];
 		const ing = ingredients[Math.floor(Math.random() * ingredients.length)];
 		const gls = glasses[Math.floor(Math.random() * glasses.length)];
@@ -100,17 +102,27 @@ export default function Home() {
 			gls ? filterCocktailsByGlass(gls, true, 3) : Promise.resolve(),
 			alc ? filterCocktailsByAlcoholic(alc, true, 3) : Promise.resolve(),
 		]);
-	};
+	}, [
+		categories,
+		ingredients,
+		glasses,
+		alcoholicFilters,
+		getRandomCocktails,
+		filterCocktailsByCategory,
+		filterCocktailsByIngredient,
+		filterCocktailsByGlass,
+		filterCocktailsByAlcoholic,
+	]);
 
 	const onRefresh = useCallback(async () => {
 		setRefreshing(true);
 		await init();
 		setRefreshing(false);
-	}, [categories, ingredients, glasses, alcoholicFilters]);
+	}, [init]);
 
 	useEffect(() => {
 		init();
-	}, []);
+	}, [init]);
 
 	const handleToggleFavorite = useCallback(
 		(item: any) => {
@@ -123,6 +135,13 @@ export default function Home() {
 		[toggleFavorite],
 	);
 
+	const handleNavigateDetail = useCallback(
+		(id: string) => {
+			router.push({ pathname: "/cocktailDetail", params: { id } });
+		},
+		[router],
+	);
+
 	const renderHeader = useCallback(
 		(title: string, link: string, onPress: () => void) => (
 			<View style={styles.headerContainer}>
@@ -133,14 +152,14 @@ export default function Home() {
 					<TouchableOpacity
 						activeOpacity={0.6}
 						onPress={onPress}
-						disabled={!onPress}
+						disabled={!onPress || onPress === TODO}
 						style={styles.headerLinkContainer}>
 						<Text
 							maxFontSizeMultiplier={1}
 							numberOfLines={1}
 							style={[
 								styles.headerLink,
-								{ color: Colors[theme].tint },
+								{ color: themeColors.tint },
 							]}>
 							{link}
 						</Text>
@@ -148,7 +167,19 @@ export default function Home() {
 				)}
 			</View>
 		),
-		[theme],
+		[themeColors.tint],
+	);
+
+	const contentContainerStyle = useMemo(
+		() => [
+			styles.listContentContainer,
+			{
+				backgroundColor: themeColors.background,
+				paddingBottom:
+					insets.bottom + 16 + (Platform.OS === "ios" ? 100 : 120),
+			},
+		],
+		[themeColors.background, insets.bottom],
 	);
 
 	const renderListSection = useCallback(
@@ -158,7 +189,7 @@ export default function Home() {
 					return (
 						<Carousel
 							data={
-								randomCocktails && randomCocktails.length > 0
+								randomCocktails?.length
 									? randomCocktails
 									: SKELETON_DATA
 							}
@@ -172,14 +203,11 @@ export default function Home() {
 											handleToggleFavorite(carouselItem)
 										}
 										drinkId={carouselItem.idDrink}
-										onPress={() => {
-											router.push({
-												pathname: "/cocktailDetail",
-												params: {
-													id: carouselItem.idDrink,
-												},
-											});
-										}}
+										onPress={() =>
+											handleNavigateDetail(
+												carouselItem.idDrink,
+											)
+										}
 									/>
 								) : (
 									<SkeletonCard />
@@ -192,7 +220,6 @@ export default function Home() {
 							dotsVisible
 						/>
 					);
-
 				case "category":
 					return (
 						<View style={styles.sectionMargin}>
@@ -200,7 +227,7 @@ export default function Home() {
 								header={renderHeader(
 									`Drink per categoria`,
 									randomFilters.category,
-									() => {},
+									TODO,
 								)}
 								data={
 									cocktailsByCategoryLoading
@@ -213,14 +240,11 @@ export default function Home() {
 										<Card
 											title={carouselItem.strDrink}
 											uri={carouselItem.strDrinkThumb}
-											onPress={() => {
-												router.push({
-													pathname: "/cocktailDetail",
-													params: {
-														id: carouselItem.idDrink,
-													},
-												});
-											}}
+											onPress={() =>
+												handleNavigateDetail(
+													carouselItem.idDrink,
+												)
+											}
 											drinkId={carouselItem.idDrink}
 											onFavouritePress={() =>
 												handleToggleFavorite(
@@ -239,7 +263,6 @@ export default function Home() {
 							/>
 						</View>
 					);
-
 				case "ingredient":
 					return (
 						<View style={styles.sectionMargin}>
@@ -247,7 +270,7 @@ export default function Home() {
 								header={renderHeader(
 									`Drink per ingrediente`,
 									randomFilters.ingredient,
-									() => {},
+									TODO,
 								)}
 								data={
 									cocktailsByIngredientLoading
@@ -260,14 +283,11 @@ export default function Home() {
 										<Card
 											title={carouselItem.strDrink}
 											uri={carouselItem.strDrinkThumb}
-											onPress={() => {
-												router.push({
-													pathname: "/cocktailDetail",
-													params: {
-														id: carouselItem.idDrink,
-													},
-												});
-											}}
+											onPress={() =>
+												handleNavigateDetail(
+													carouselItem.idDrink,
+												)
+											}
 											drinkId={carouselItem.idDrink}
 											onFavouritePress={() =>
 												handleToggleFavorite(
@@ -286,7 +306,6 @@ export default function Home() {
 							/>
 						</View>
 					);
-
 				case "glass":
 					return (
 						<View style={styles.sectionMargin}>
@@ -294,7 +313,7 @@ export default function Home() {
 								header={renderHeader(
 									`Drink per bicchiere`,
 									randomFilters.glass,
-									() => {},
+									TODO,
 								)}
 								data={
 									cocktailsByGlassLoading
@@ -306,14 +325,11 @@ export default function Home() {
 										<Card
 											title={carouselItem.strDrink}
 											uri={carouselItem.strDrinkThumb}
-											onPress={() => {
-												router.push({
-													pathname: "/cocktailDetail",
-													params: {
-														id: carouselItem.idDrink,
-													},
-												});
-											}}
+											onPress={() =>
+												handleNavigateDetail(
+													carouselItem.idDrink,
+												)
+											}
 											drinkId={carouselItem.idDrink}
 											onFavouritePress={() =>
 												handleToggleFavorite(
@@ -332,7 +348,6 @@ export default function Home() {
 							/>
 						</View>
 					);
-
 				case "type":
 					return (
 						<View style={styles.sectionMargin}>
@@ -340,7 +355,7 @@ export default function Home() {
 								header={renderHeader(
 									`Drink per tipo`,
 									randomFilters.alcoholic,
-									() => {},
+									TODO,
 								)}
 								data={
 									cocktailsByAlcoholicFilterLoading
@@ -353,14 +368,11 @@ export default function Home() {
 										<Card
 											title={carouselItem.strDrink}
 											uri={carouselItem.strDrinkThumb}
-											onPress={() => {
-												router.push({
-													pathname: "/cocktailDetail",
-													params: {
-														id: carouselItem.idDrink,
-													},
-												});
-											}}
+											onPress={() =>
+												handleNavigateDetail(
+													carouselItem.idDrink,
+												)
+											}
 											drinkId={carouselItem.idDrink}
 											onFavouritePress={() =>
 												handleToggleFavorite(
@@ -379,7 +391,6 @@ export default function Home() {
 							/>
 						</View>
 					);
-
 				default:
 					return null;
 			}
@@ -400,20 +411,32 @@ export default function Home() {
 			cocktailsByAlcoholicFilterLoading,
 			randomFilters.alcoholic,
 			handleToggleFavorite,
+			handleNavigateDetail,
 			renderHeader,
 		],
 	);
 
 	return (
-		<>
+		<View style={styles.mainWrapper}>
 			<StatusBar style={theme === "dark" ? "light" : "dark"} />
+
+			<View
+				style={[
+					styles.bgTopHalf,
+					{ backgroundColor: themeColors.surface },
+				]}
+			/>
+			<View
+				style={[
+					styles.bgBottomHalf,
+					{ backgroundColor: themeColors.background },
+				]}
+			/>
+
 			<View
 				style={[
 					styles.topBar,
-					{
-						marginTop: Constants.statusBarHeight + 10,
-						backgroundColor: Colors[theme].surface,
-					},
+					{ marginTop: Constants.statusBarHeight + 10 },
 				]}>
 				<Text style={styles.title}>Home</Text>
 				<View style={styles.topBarAction}>
@@ -422,15 +445,13 @@ export default function Home() {
 							<FontAwesome5
 								name="cocktail"
 								size={22}
-								color={Colors[theme].background}
+								color={themeColors.background}
 							/>
 						)}
 						label="Stupiscimi"
-						onPress={() => {
-							router.push("/cocktailDetail");
-						}}
-						backgroundColor={Colors[theme].tint}
-						labelColor={Colors[theme].background}
+						onPress={() => router.push("/cocktailDetail")}
+						backgroundColor={themeColors.tint}
+						labelColor={themeColors.background}
 					/>
 				</View>
 			</View>
@@ -448,32 +469,41 @@ export default function Home() {
 					<RefreshControl
 						refreshing={refreshing}
 						onRefresh={onRefresh}
-						tintColor={Colors[theme].tint}
-						colors={[Colors[theme].tint]}
-						progressBackgroundColor={Colors[theme].surface}
+						tintColor={themeColors.tint}
+						colors={[themeColors.tint]}
+						progressBackgroundColor={themeColors.surface}
 						title="Aggiorno le informazioni..."
-						titleColor={Colors[theme].tint}
+						titleColor={themeColors.tint}
 					/>
 				}
-				style={[styles.container, { zIndex: 1 }]}
-				contentContainerStyle={[
-					styles.listContentContainer,
-					{
-						backgroundColor: Colors[theme].background,
-						paddingBottom:
-							insets.bottom +
-							16 +
-							(Platform.OS === "ios" ? 100 : 120),
-					},
-				]}
+				style={styles.container}
+				contentContainerStyle={contentContainerStyle}
 			/>
-		</>
+		</View>
 	);
 }
 
 const styles = StyleSheet.create({
+	mainWrapper: {
+		flex: 1,
+	},
+	bgTopHalf: {
+		position: "absolute",
+		top: 0,
+		left: 0,
+		right: 0,
+		height: "50%",
+	},
+	bgBottomHalf: {
+		position: "absolute",
+		bottom: 0,
+		left: 0,
+		right: 0,
+		height: "50%",
+	},
 	container: {
 		flex: 1,
+		zIndex: 1,
 	},
 	title: {
 		fontSize: 32,
@@ -485,6 +515,7 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "space-between",
 		flexDirection: "row",
+		zIndex: 2,
 	},
 	topBarAction: {
 		flexDirection: "row",
@@ -514,11 +545,12 @@ const styles = StyleSheet.create({
 		flexWrap: "wrap",
 	},
 	listContentContainer: {
-		minHeight: "100%",
+		flexGrow: 1,
 		borderTopLeftRadius: 18,
 		borderTopRightRadius: 18,
 		marginTop: 10,
 		paddingVertical: 16,
 		boxShadow: `0 -3px 10px rgba(0,0,0,0.1)`,
+		elevation: 5,
 	},
 });
