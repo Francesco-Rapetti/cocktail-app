@@ -94,6 +94,9 @@ export const useCocktails = () => {
             const promises = Array.from({ length: number }, () => repository.getRandomCocktail());
             const randomCocktails = await Promise.all(promises);
             setCocktails(randomCocktails);
+            if (number === 1) {
+                setCocktail(randomCocktails[0]);
+            }
         } catch (err) {
             setError('Impossibile caricare i cocktail');
         } finally {
