@@ -1,5 +1,12 @@
 import Constants from "expo-constants";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+	memo,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import {
 	Platform,
 	ScrollView,
@@ -36,7 +43,7 @@ import {
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-const EmptyFavorites = () => (
+const EmptyFavorites = memo(() => (
 	<Animated.View
 		entering={FadeIn.duration(400).delay(200)}
 		style={styles.emptyContainer}>
@@ -46,7 +53,7 @@ const EmptyFavorites = () => (
 			categoria e molto altro! Esplora e salva i tuoi preferiti!
 		</Text>
 	</Animated.View>
-);
+));
 
 const FILTER_OPTIONS = [
 	{ id: "alcoholic", label: "Alcolico" },
@@ -100,7 +107,7 @@ export default function Search() {
 		setIsSearchActive(true);
 		searchProgress.value = withTiming(1, { duration: 500 });
 		setTimeout(() => inputRef.current?.focus(), 50);
-	}, []);
+	}, [searchProgress]);
 
 	const closeSearch = useCallback(() => {
 		inputRef.current?.blur();
@@ -118,7 +125,7 @@ export default function Search() {
 		setActiveFilterCategory(null);
 		filterProgress.value = withTiming(1, { duration: 500 });
 		accordionProgress.value = withTiming(1, { duration: 500 });
-	}, []);
+	}, [filterProgress, accordionProgress]);
 
 	const closeFilter = useCallback(() => {
 		setIsFilterActive(false);
@@ -126,7 +133,7 @@ export default function Search() {
 		setActiveFilterCategory(null);
 		filterProgress.value = withTiming(0, { duration: 500 });
 		accordionProgress.value = withTiming(0, { duration: 500 });
-	}, []);
+	}, [filterProgress, accordionProgress]);
 
 	const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -208,10 +215,10 @@ export default function Search() {
 					]}
 					onPress={() => handleSelectPrimaryCategory(option.id)}>
 					<Text
-						style={{
-							color: Colors[theme].background,
-							fontSize: 16,
-						}}>
+						style={[
+							styles.accordionText,
+							{ color: Colors[theme].background },
+						]}>
 						{option.label}
 					</Text>
 					<MaterialIcons
@@ -226,17 +233,17 @@ export default function Search() {
 		let data: string[] = [];
 
 		if (activeFilterCategory === "alcoholic") {
-			data = alcoholicFilters;
+			data = alcoholicFilters || [];
 		} else if (activeFilterCategory === "category") {
-			data = categories;
+			data = categories || [];
 		} else if (activeFilterCategory === "ingredient") {
-			data = ingredients;
+			data = ingredients || [];
 		} else if (activeFilterCategory === "glass") {
-			data = glasses;
+			data = glasses || [];
 		}
 
 		return (
-			<ScrollView style={{ maxHeight: 350 }} nestedScrollEnabled>
+			<ScrollView style={styles.accordionScroll} nestedScrollEnabled>
 				<Pressable
 					style={styles.backOption}
 					onPress={() => setActiveFilterCategory(null)}>
@@ -246,18 +253,20 @@ export default function Search() {
 						color={Colors[theme].background}
 					/>
 					<Text
-						style={{
-							color: Colors[theme].background,
-							fontSize: 16,
-							fontWeight: "bold",
-						}}>
+						style={[
+							styles.accordionText,
+							{
+								color: Colors[theme].background,
+								fontWeight: "bold",
+							},
+						]}>
 						Indietro
 					</Text>
 				</Pressable>
 
-				{data.map((item, index) => (
+				{(data || []).map((item, index) => (
 					<Pressable
-						key={index}
+						key={`${activeFilterCategory}-${index}`}
 						style={[
 							styles.accordionOption,
 							{
@@ -268,10 +277,10 @@ export default function Search() {
 						]}
 						onPress={() => handleSelectSubCategory(item)}>
 						<Text
-							style={{
-								color: Colors[theme].background,
-								fontSize: 16,
-							}}>
+							style={[
+								styles.accordionText,
+								{ color: Colors[theme].background },
+							]}>
 							{item}
 						</Text>
 					</Pressable>
@@ -394,7 +403,6 @@ export default function Search() {
 		],
 	}));
 
-	// Aumentato a 350 per contenere liste lunghe in combinazione con la ScrollView
 	const accordionStyle = useAnimatedStyle(() => ({
 		maxHeight: interpolate(
 			accordionProgress.value,
@@ -460,12 +468,11 @@ export default function Search() {
 	}, [activeFilterCategory, theme]);
 
 	const renderItem = useCallback(
-		({ item }: { item: Cocktail }) =>
+		({ item, index }: { item: Cocktail; index: number }) =>
 			item && !loading ? (
 				<Animated.View
-					key={item.idDrink}
 					exiting={FadeOutLeft.duration(300)}
-					style={{ marginBottom: 24 }}>
+					style={styles.cardWrapper}>
 					<Card
 						uri={item.strDrinkThumb}
 						title={item.strDrink}
@@ -480,9 +487,11 @@ export default function Search() {
 					/>
 				</Animated.View>
 			) : (
-				<SkeletonCard />
+				<View style={styles.cardWrapper}>
+					<SkeletonCard />
+				</View>
 			),
-		[handleToggleFavorite, loading],
+		[handleToggleFavorite, loading, router],
 	);
 
 	const listContentStyle = useMemo(
@@ -493,6 +502,12 @@ export default function Search() {
 			flexGrow: 1,
 		}),
 		[insets.bottom],
+	);
+
+	const keyExtractor = useCallback(
+		(item: Cocktail, index: number) =>
+			item?.idDrink ? item.idDrink : `skeleton-${index}`,
+		[],
 	);
 
 	return (
@@ -616,12 +631,7 @@ export default function Search() {
 							pointerEvents={isFilterActive ? "auto" : "none"}>
 							<Pressable
 								onPress={toggleAccordion}
-								style={{
-									flex: 1,
-									flexDirection: "row",
-									alignItems: "center",
-									gap: 8,
-								}}>
+								style={styles.activeFilterRow}>
 								{renderFilterIcon()}
 
 								<Text
@@ -663,10 +673,13 @@ export default function Search() {
 			<Animated.FlatList
 				data={cocktails}
 				contentContainerStyle={listContentStyle}
-				keyExtractor={(item) => item.idDrink}
+				keyExtractor={keyExtractor}
 				renderItem={renderItem}
 				ListEmptyComponent={EmptyFavorites}
 				itemLayoutAnimation={LinearTransition.springify()}
+				initialNumToRender={8}
+				maxToRenderPerBatch={10}
+				windowSize={5}
 			/>
 		</View>
 	);
@@ -708,6 +721,12 @@ const styles = StyleSheet.create({
 		gap: 8,
 		paddingHorizontal: 12,
 	},
+	activeFilterRow: {
+		flex: 1,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+	},
 	pressableRow: {
 		flexDirection: "row",
 		alignItems: "center",
@@ -744,6 +763,12 @@ const styles = StyleSheet.create({
 		paddingVertical: 14,
 		paddingHorizontal: 16,
 	},
+	accordionScroll: {
+		maxHeight: 350,
+	},
+	accordionText: {
+		fontSize: 16,
+	},
 	backOption: {
 		flexDirection: "row",
 		alignItems: "center",
@@ -769,5 +794,8 @@ const styles = StyleSheet.create({
 		opacity: 0.7,
 		textAlign: "center",
 		lineHeight: 24,
+	},
+	cardWrapper: {
+		marginBottom: 24,
 	},
 });
