@@ -1,14 +1,773 @@
-import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import Constants from "expo-constants";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	Platform,
+	ScrollView,
+	StyleSheet,
+	TextInput,
+	useColorScheme,
+} from "react-native";
+import Animated, {
+	Extrapolation,
+	FadeIn,
+	FadeOutLeft,
+	interpolate,
+	LinearTransition,
+	useAnimatedStyle,
+	useSharedValue,
+	withTiming,
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const Search = () => {
+import Card from "@/components/UI/Card/Card";
+import SkeletonCard from "@/components/UI/Card/SkeletonCard";
+import Pressable from "@/components/UI/Pressable";
+import { Text, View } from "@/components/UI/Themed";
+import Colors from "@/constants/Colors";
+import { Cocktail } from "@/entities/Cocktail";
+import { useCocktails } from "@/hooks/useCocktails";
+import { useAppStore } from "@/stores/AppStore";
+import {
+	Entypo,
+	FontAwesome5,
+	FontAwesome6,
+	Ionicons,
+	MaterialIcons,
+} from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+
+const EmptyFavorites = () => (
+	<Animated.View
+		entering={FadeIn.duration(400).delay(200)}
+		style={styles.emptyContainer}>
+		<Text style={styles.emptyTitle}>Cerca tra i drink</Text>
+		<Text style={styles.emptySubtitle}>
+			Usa la barra di ricerca per trovare cocktail per nome, ingrediente,
+			categoria e molto altro! Esplora e salva i tuoi preferiti!
+		</Text>
+	</Animated.View>
+);
+
+const FILTER_OPTIONS = [
+	{ id: "alcoholic", label: "Alcolico" },
+	{ id: "category", label: "Categoria" },
+	{ id: "ingredient", label: "Ingrediente" },
+	{ id: "glass", label: "Bicchiere" },
+];
+
+export default function Search() {
+	const theme = useColorScheme() ?? "light";
+	const insets = useSafeAreaInsets();
+	const router = useRouter();
+
+	const {
+		toggleFavorite,
+		categories,
+		ingredients,
+		glasses,
+		alcoholicFilters,
+	} = useAppStore();
+
+	const [isSearchActive, setIsSearchActive] = useState(false);
+	const [searchText, setSearchText] = useState("");
+	const inputRef = useRef<TextInput>(null);
+
+	const [isFilterActive, setIsFilterActive] = useState(false);
+	const [activeFilterCategory, setActiveFilterCategory] = useState<
+		string | null
+	>(null);
+	const [selectedFilterValue, setSelectedFilterValue] = useState<
+		string | null
+	>(null);
+
+	const searchProgress = useSharedValue(0);
+	const filterProgress = useSharedValue(0);
+	const accordionProgress = useSharedValue(0);
+
+	const {
+		cocktails,
+		loading,
+		error,
+		searchCocktailsByName,
+		clearCocktails,
+		filterCocktailsByAlcoholic,
+		filterCocktailsByCategory,
+		filterCocktailsByGlass,
+		filterCocktailsByIngredient,
+	} = useCocktails();
+
+	const openSearch = useCallback(() => {
+		setIsSearchActive(true);
+		searchProgress.value = withTiming(1, { duration: 500 });
+		setTimeout(() => inputRef.current?.focus(), 50);
+	}, []);
+
+	const closeSearch = useCallback(() => {
+		inputRef.current?.blur();
+		setSearchText("");
+		setIsSearchActive(false);
+		searchProgress.value = withTiming(0, { duration: 500 });
+
+		if (searchTimerRef.current) {
+			clearTimeout(searchTimerRef.current);
+		}
+	}, [searchProgress]);
+
+	const openFilter = useCallback(() => {
+		setIsFilterActive(true);
+		setActiveFilterCategory(null);
+		filterProgress.value = withTiming(1, { duration: 500 });
+		accordionProgress.value = withTiming(1, { duration: 500 });
+	}, []);
+
+	const closeFilter = useCallback(() => {
+		setIsFilterActive(false);
+		setSelectedFilterValue(null);
+		setActiveFilterCategory(null);
+		filterProgress.value = withTiming(0, { duration: 500 });
+		accordionProgress.value = withTiming(0, { duration: 500 });
+	}, []);
+
+	const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const handleSearchChange = useCallback(
+		(text: string) => {
+			setSearchText(text);
+
+			if (searchTimerRef.current) {
+				clearTimeout(searchTimerRef.current);
+			}
+
+			searchTimerRef.current = setTimeout(() => {
+				const query = text.trim();
+				if (query.length > 0) {
+					searchCocktailsByName(query);
+				} else {
+					clearCocktails();
+				}
+			}, 400);
+		},
+		[searchCocktailsByName],
+	);
+
+	useEffect(() => {
+		return () => {
+			if (searchTimerRef.current) {
+				clearTimeout(searchTimerRef.current);
+			}
+		};
+	}, []);
+
+	const toggleAccordion = useCallback(() => {
+		if (accordionProgress.value === 0) {
+			accordionProgress.value = withTiming(1, { duration: 400 });
+		} else {
+			accordionProgress.value = withTiming(0, { duration: 400 });
+		}
+	}, [accordionProgress]);
+
+	const handleSelectPrimaryCategory = useCallback((id: string) => {
+		setActiveFilterCategory(id);
+	}, []);
+
+	const handleSelectSubCategory = useCallback(
+		(value: string) => {
+			setSelectedFilterValue(value);
+			accordionProgress.value = withTiming(0, { duration: 400 });
+
+			if (activeFilterCategory === "alcoholic")
+				filterCocktailsByAlcoholic(value);
+			else if (activeFilterCategory === "category")
+				filterCocktailsByCategory(value);
+			else if (activeFilterCategory === "ingredient")
+				filterCocktailsByIngredient(value);
+			else if (activeFilterCategory === "glass")
+				filterCocktailsByGlass(value);
+		},
+		[
+			activeFilterCategory,
+			filterCocktailsByAlcoholic,
+			filterCocktailsByCategory,
+			filterCocktailsByGlass,
+			filterCocktailsByIngredient,
+			accordionProgress,
+		],
+	);
+
+	const renderAccordionContent = () => {
+		if (!activeFilterCategory) {
+			return FILTER_OPTIONS.map((option, index) => (
+				<Pressable
+					key={option.id}
+					style={[
+						styles.accordionOption,
+						index !== FILTER_OPTIONS.length - 1 && {
+							borderBottomWidth: 1,
+							borderBottomColor: Colors[theme].background + "20",
+						},
+					]}
+					onPress={() => handleSelectPrimaryCategory(option.id)}>
+					<Text
+						style={{
+							color: Colors[theme].background,
+							fontSize: 16,
+						}}>
+						{option.label}
+					</Text>
+					<MaterialIcons
+						name="chevron-right"
+						size={20}
+						color={Colors[theme].background}
+					/>
+				</Pressable>
+			));
+		}
+
+		let data: string[] = [];
+
+		if (activeFilterCategory === "alcoholic") {
+			data = alcoholicFilters;
+		} else if (activeFilterCategory === "category") {
+			data = categories;
+		} else if (activeFilterCategory === "ingredient") {
+			data = ingredients;
+		} else if (activeFilterCategory === "glass") {
+			data = glasses;
+		}
+
+		return (
+			<ScrollView style={{ maxHeight: 350 }} nestedScrollEnabled>
+				<Pressable
+					style={styles.backOption}
+					onPress={() => setActiveFilterCategory(null)}>
+					<MaterialIcons
+						name="arrow-back"
+						size={20}
+						color={Colors[theme].background}
+					/>
+					<Text
+						style={{
+							color: Colors[theme].background,
+							fontSize: 16,
+							fontWeight: "bold",
+						}}>
+						Indietro
+					</Text>
+				</Pressable>
+
+				{data.map((item, index) => (
+					<Pressable
+						key={index}
+						style={[
+							styles.accordionOption,
+							{
+								borderBottomWidth: 1,
+								borderBottomColor:
+									Colors[theme].background + "10",
+							},
+						]}
+						onPress={() => handleSelectSubCategory(item)}>
+						<Text
+							style={{
+								color: Colors[theme].background,
+								fontSize: 16,
+							}}>
+							{item}
+						</Text>
+					</Pressable>
+				))}
+			</ScrollView>
+		);
+	};
+
+	const searchBaseStyle = useAnimatedStyle(() => ({
+		flex: 1,
+		borderTopRightRadius: interpolate(
+			searchProgress.value,
+			[0, 1],
+			[4, 50],
+			Extrapolation.CLAMP,
+		),
+		borderBottomRightRadius: interpolate(
+			searchProgress.value,
+			[0, 1],
+			[4, 50],
+			Extrapolation.CLAMP,
+		),
+		maxWidth: interpolate(
+			filterProgress.value,
+			[0, 1],
+			[2000, 0],
+			Extrapolation.CLAMP,
+		),
+		opacity: interpolate(
+			filterProgress.value,
+			[0, 0.3, 1],
+			[1, 0, 0],
+			Extrapolation.CLAMP,
+		),
+	}));
+
+	const filterContainerStyle = useAnimatedStyle(() => {
+		const isAnyActive = Math.max(
+			searchProgress.value,
+			filterProgress.value,
+		);
+		return {
+			flex: 1,
+			borderTopLeftRadius: interpolate(
+				filterProgress.value,
+				[0, 1],
+				[4, 50],
+				Extrapolation.CLAMP,
+			),
+			borderBottomLeftRadius: interpolate(
+				filterProgress.value,
+				[0, 1],
+				[4, 50],
+				Extrapolation.CLAMP,
+			),
+			maxWidth: interpolate(
+				searchProgress.value,
+				[0, 1],
+				[2000, 0],
+				Extrapolation.CLAMP,
+			),
+			marginLeft: interpolate(
+				isAnyActive,
+				[0, 1],
+				[4, 0],
+				Extrapolation.CLAMP,
+			),
+			opacity: interpolate(
+				searchProgress.value,
+				[0, 0.3, 1],
+				[1, 0, 0],
+				Extrapolation.CLAMP,
+			),
+		};
+	});
+
+	const inactiveSearchRowStyle = useAnimatedStyle(() => ({
+		opacity: interpolate(
+			searchProgress.value,
+			[0, 0.4],
+			[1, 0],
+			Extrapolation.CLAMP,
+		),
+		transform: [
+			{ scale: interpolate(searchProgress.value, [0, 1], [1, 0.9]) },
+		],
+	}));
+	const activeSearchRowStyle = useAnimatedStyle(() => ({
+		opacity: interpolate(
+			searchProgress.value,
+			[0.6, 1],
+			[0, 1],
+			Extrapolation.CLAMP,
+		),
+		transform: [
+			{ scale: interpolate(searchProgress.value, [0, 1], [0.95, 1]) },
+		],
+	}));
+
+	const inactiveFilterRowStyle = useAnimatedStyle(() => ({
+		opacity: interpolate(
+			filterProgress.value,
+			[0, 0.4],
+			[1, 0],
+			Extrapolation.CLAMP,
+		),
+		transform: [
+			{ scale: interpolate(filterProgress.value, [0, 1], [1, 0.9]) },
+		],
+	}));
+	const activeFilterRowStyle = useAnimatedStyle(() => ({
+		opacity: interpolate(
+			filterProgress.value,
+			[0.6, 1],
+			[0, 1],
+			Extrapolation.CLAMP,
+		),
+		transform: [
+			{ scale: interpolate(filterProgress.value, [0, 1], [0.95, 1]) },
+		],
+	}));
+
+	// Aumentato a 350 per contenere liste lunghe in combinazione con la ScrollView
+	const accordionStyle = useAnimatedStyle(() => ({
+		maxHeight: interpolate(
+			accordionProgress.value,
+			[0, 1],
+			[0, 350],
+			Extrapolation.CLAMP,
+		),
+		opacity: interpolate(
+			accordionProgress.value,
+			[0, 0.8, 1],
+			[0, 0, 1],
+			Extrapolation.CLAMP,
+		),
+		marginTop: interpolate(
+			accordionProgress.value,
+			[0, 1],
+			[0, 8],
+			Extrapolation.CLAMP,
+		),
+	}));
+
+	const handleToggleFavorite = useCallback(
+		(item: any) => {
+			toggleFavorite({
+				idDrink: item.idDrink,
+				strDrink: item.strDrink,
+				strDrinkThumb: item.strDrinkThumb,
+			});
+		},
+		[toggleFavorite],
+	);
+
+	const renderFilterIcon = useCallback(() => {
+		const iconColor = Colors[theme].background;
+		switch (activeFilterCategory) {
+			case "alcoholic":
+				return (
+					<FontAwesome5 name="cocktail" size={24} color={iconColor} />
+				);
+			case "category":
+				return (
+					<MaterialIcons
+						name="category"
+						size={24}
+						color={iconColor}
+					/>
+				);
+			case "ingredient":
+				return (
+					<FontAwesome6 name="lemon" size={24} color={iconColor} />
+				);
+			case "glass":
+				return (
+					<FontAwesome5
+						name="glass-whiskey"
+						size={24}
+						color={iconColor}
+					/>
+				);
+			default:
+				return <Ionicons name="filter" size={24} color={iconColor} />;
+		}
+	}, [activeFilterCategory, theme]);
+
+	const renderItem = useCallback(
+		({ item }: { item: Cocktail }) =>
+			item && !loading ? (
+				<Animated.View
+					key={item.idDrink}
+					exiting={FadeOutLeft.duration(300)}
+					style={{ marginBottom: 24 }}>
+					<Card
+						uri={item.strDrinkThumb}
+						title={item.strDrink}
+						drinkId={item.idDrink}
+						onFavouritePress={() => handleToggleFavorite(item)}
+						onPress={() =>
+							router.push({
+								pathname: "/cocktailDetail",
+								params: { id: item.idDrink },
+							})
+						}
+					/>
+				</Animated.View>
+			) : (
+				<SkeletonCard />
+			),
+		[handleToggleFavorite, loading],
+	);
+
+	const listContentStyle = useMemo(
+		() => ({
+			paddingBottom:
+				insets.bottom + 16 + (Platform.OS === "ios" ? 100 : 120),
+			marginHorizontal: 16,
+			flexGrow: 1,
+		}),
+		[insets.bottom],
+	);
+
 	return (
-		<View>
-			<Text>Search</Text>
+		<View
+			style={[
+				styles.container,
+				{ paddingTop: Constants.statusBarHeight + 10 },
+			]}>
+			<Text maxFontSizeMultiplier={1} style={styles.title}>
+				Cerca
+			</Text>
+
+			<View style={styles.actionsWrapper}>
+				<View style={styles.actionsRow}>
+					<Animated.View
+						style={[
+							styles.baseLayout,
+							{
+								backgroundColor: Colors[theme].tint,
+								borderTopLeftRadius: 50,
+								borderBottomLeftRadius: 50,
+							},
+							searchBaseStyle,
+						]}>
+						<Animated.View
+							style={[
+								styles.absoluteCenterRow,
+								inactiveSearchRowStyle,
+							]}
+							pointerEvents={isSearchActive ? "none" : "auto"}>
+							<Pressable
+								onPress={openSearch}
+								disabled={isFilterActive}
+								style={styles.pressableRow}>
+								<Entypo
+									name="magnifying-glass"
+									size={24}
+									color={Colors[theme].background}
+								/>
+								<Text
+									style={[
+										styles.actionText,
+										{ color: Colors[theme].background },
+									]}>
+									Cerca
+								</Text>
+							</Pressable>
+						</Animated.View>
+
+						<Animated.View
+							style={[styles.activeRow, activeSearchRowStyle]}
+							pointerEvents={isSearchActive ? "auto" : "none"}>
+							<Entypo
+								name="magnifying-glass"
+								size={24}
+								color={Colors[theme].background}
+							/>
+							<TextInput
+								ref={inputRef}
+								style={[
+									styles.searchInput,
+									{ color: Colors[theme].background },
+								]}
+								placeholder="Cerca cocktail..."
+								placeholderTextColor={
+									Colors[theme].background + "80"
+								}
+								value={searchText}
+								onChangeText={handleSearchChange}
+								selectionColor={Colors[theme].background}
+							/>
+							<Pressable
+								onPress={closeSearch}
+								style={styles.iconButton}>
+								<Ionicons
+									name="close"
+									size={24}
+									color={Colors[theme].background}
+								/>
+							</Pressable>
+						</Animated.View>
+					</Animated.View>
+
+					<Animated.View
+						style={[
+							styles.baseLayout,
+							{
+								backgroundColor: Colors[theme].tint,
+								borderTopRightRadius: 50,
+								borderBottomRightRadius: 50,
+							},
+							filterContainerStyle,
+						]}>
+						<Animated.View
+							style={[
+								styles.absoluteCenterRow,
+								inactiveFilterRowStyle,
+							]}
+							pointerEvents={isFilterActive ? "none" : "auto"}>
+							<Pressable
+								onPress={openFilter}
+								disabled={isSearchActive}
+								style={styles.pressableRow}>
+								<Ionicons
+									name="filter"
+									size={24}
+									color={Colors[theme].background}
+								/>
+								<Text
+									style={[
+										styles.actionText,
+										{ color: Colors[theme].background },
+									]}>
+									Filtra
+								</Text>
+							</Pressable>
+						</Animated.View>
+
+						<Animated.View
+							style={[styles.activeRow, activeFilterRowStyle]}
+							pointerEvents={isFilterActive ? "auto" : "none"}>
+							<Pressable
+								onPress={toggleAccordion}
+								style={{
+									flex: 1,
+									flexDirection: "row",
+									alignItems: "center",
+									gap: 8,
+								}}>
+								{renderFilterIcon()}
+
+								<Text
+									numberOfLines={1}
+									style={[
+										styles.actionText,
+										styles.activeFilterText,
+										{ color: Colors[theme].background },
+									]}>
+									{selectedFilterValue
+										? selectedFilterValue
+										: "Seleziona filtro..."}
+								</Text>
+							</Pressable>
+
+							<Pressable
+								onPress={closeFilter}
+								style={styles.iconButton}>
+								<Ionicons
+									name="close"
+									size={24}
+									color={Colors[theme].background}
+								/>
+							</Pressable>
+						</Animated.View>
+					</Animated.View>
+				</View>
+
+				<Animated.View
+					style={[
+						styles.accordionContainer,
+						{ backgroundColor: Colors[theme].tint },
+						accordionStyle,
+					]}>
+					{renderAccordionContent()}
+				</Animated.View>
+			</View>
+
+			<Animated.FlatList
+				data={cocktails}
+				contentContainerStyle={listContentStyle}
+				keyExtractor={(item) => item.idDrink}
+				renderItem={renderItem}
+				ListEmptyComponent={EmptyFavorites}
+				itemLayoutAnimation={LinearTransition.springify()}
+			/>
 		</View>
 	);
-};
+}
 
-export default Search;
-
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+	container: {
+		flex: 1,
+		paddingVertical: 6,
+	},
+	title: {
+		fontSize: 32,
+		fontWeight: "bold",
+		marginBottom: 16,
+		marginHorizontal: 16,
+	},
+	actionsWrapper: {
+		marginBottom: 16,
+		marginHorizontal: 16,
+	},
+	actionsRow: {
+		flexDirection: "row",
+	},
+	baseLayout: {
+		height: 48,
+		justifyContent: "center",
+		overflow: "hidden",
+	},
+	absoluteCenterRow: {
+		...StyleSheet.absoluteFillObject,
+		justifyContent: "center",
+		alignItems: "center",
+		paddingHorizontal: 12,
+	},
+	activeRow: {
+		flex: 1,
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+		paddingHorizontal: 12,
+	},
+	pressableRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 8,
+		width: "100%",
+		height: "100%",
+	},
+	activeFilterText: {
+		flex: 1,
+		textAlign: "left",
+	},
+	searchInput: {
+		flex: 1,
+		fontSize: 16,
+		padding: 0,
+		height: "100%",
+	},
+	iconButton: {
+		padding: 4,
+		marginRight: -4,
+	},
+	actionText: {
+		fontSize: 16,
+	},
+	accordionContainer: {
+		borderRadius: 16,
+		overflow: "hidden",
+	},
+	accordionOption: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		paddingVertical: 14,
+		paddingHorizontal: 16,
+	},
+	backOption: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingVertical: 14,
+		paddingHorizontal: 16,
+		gap: 8,
+		backgroundColor: "rgba(0,0,0,0.1)",
+	},
+	emptyContainer: {
+		flex: 1,
+		justifyContent: "center",
+		alignItems: "center",
+		paddingHorizontal: 32,
+	},
+	emptyTitle: {
+		fontSize: 24,
+		fontWeight: "bold",
+		marginBottom: 8,
+		textAlign: "center",
+	},
+	emptySubtitle: {
+		fontSize: 16,
+		opacity: 0.7,
+		textAlign: "center",
+		lineHeight: 24,
+	},
+});
