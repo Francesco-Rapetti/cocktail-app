@@ -417,7 +417,8 @@ export default function Explore() {
 			!loading ||
 			letterIndex === 0 ||
 			searchText.trim() !== "" ||
-			selectedFilterValue
+			selectedFilterValue ||
+			error
 		)
 			return null;
 		return (
