@@ -1,6 +1,6 @@
 {
 	"expo": {
-		"name": "cocktail-app",
+		"name": "CocktailApp",
 		"slug": "cocktail-app",
 		"version": "1.0.0",
 		"orientation": "portrait",
@@ -8,19 +8,20 @@
 		"scheme": "cocktailapp",
 		"userInterfaceStyle": "automatic",
 		"newArchEnabled": true,
-		"splash": {
-			"image": "./assets/images/splash-icon.png",
-			"resizeMode": "contain",
-			"backgroundColor": "#ffffff"
-		},
 		"ios": {
 			"supportsTablet": true,
-			"bundleIdentifier": "com.francescorapetti.cocktail-app"
+			"bundleIdentifier": "com.francescorapetti.cocktail-app",
+			"icon": {
+				"dark": "./assets/images/iconDarkIOS.png",
+				"light": "./assets/images/icon.png",
+				"tinted": "./assets/images/icon.png"
+			}
 		},
 		"android": {
 			"adaptiveIcon": {
-				"foregroundImage": "./assets/images/adaptive-icon.png",
-				"backgroundColor": "#ffffff"
+				"foregroundImage": "./assets/images/androidForegroundIcon.png",
+				"monochromeImage": "./assets/images/androidForegroundIcon.png",
+				"backgroundImage": "./assets/images/androidBackgroundIcon.png"
 			},
 			"edgeToEdgeEnabled": true,
 			"predictiveBackGestureEnabled": false,
@@ -31,7 +32,39 @@
 			"output": "static",
 			"favicon": "./assets/images/favicon.png"
 		},
-		"plugins": ["expo-router", "./withAndroidLintDisable"],
+		"plugins": [
+			"expo-router",
+			[
+				"expo-splash-screen",
+				{
+					"android": {
+						"backgroundColor": "#FFF5F7",
+						"image": "./assets/images/icon.png",
+						"imageWidth": 200,
+						"resizeMode": "contain",
+						"dark": {
+							"backgroundColor": "#1E1218",
+							"image": "./assets/images/icon.png",
+							"imageWidth": 200,
+							"resizeMode": "contain"
+						}
+					},
+					"ios": {
+						"backgroundColor": "#FFF5F7",
+						"image": "./assets/images/splashIconIOS.png",
+						"imageWidth": 200,
+						"resizeMode": "contain",
+						"dark": {
+							"backgroundColor": "#1E1218",
+							"image": "./assets/images/splashIconIOS.png",
+							"imageWidth": 200,
+							"resizeMode": "contain"
+						}
+					}
+				}
+			],
+			"./withAndroidLintDisable"
+		],
 		"experiments": {
 			"typedRoutes": true
 		}
