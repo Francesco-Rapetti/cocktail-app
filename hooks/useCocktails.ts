@@ -42,7 +42,7 @@ export const useCocktails = () => {
         }
     }, []);
 
-    const searchCocktailsByFirstLetter = useCallback(async (letter: string) => {
+    const searchCocktailsByFirstLetter = useCallback(async (letter: string, append: boolean = false) => {
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
@@ -51,17 +51,25 @@ export const useCocktails = () => {
         abortControllerRef.current = controller;
 
         setLoading(true);
-        setError(null);
+        if (!append) setError(null);
 
         try {
             const data = await repository.searchCocktailsByFirstLetter(letter, controller.signal);
-            setCocktails(data);
+
+            const newCocktails = data || [];
+
+            setCocktails(prevCocktails => {
+                if (append) {
+                    return [...prevCocktails, ...newCocktails];
+                }
+                return newCocktails as Cocktail[];
+            });
+
         } catch (err: any) {
             if (err.name === 'AbortError') {
                 console.log('Richiesta annullata: ' + letter);
                 return;
             }
-
             setError('Impossibile caricare i cocktail');
         } finally {
             if (!controller.signal.aborted) {

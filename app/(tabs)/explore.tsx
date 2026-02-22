@@ -8,6 +8,7 @@ import React, {
 	useState,
 } from "react";
 import {
+	ActivityIndicator,
 	Platform,
 	ScrollView,
 	StyleSheet,
@@ -43,6 +44,9 @@ import {
 	MaterialIcons,
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+
+const ALPHABET_AZ = "0123456789abcdefghijklmnopqrstuvwxyz".split("");
+const ALPHABET_ZA = "zyxwvutsrqponmlkjihgfedcba9876543210".split("");
 
 const EmptyFavorites = memo(() => (
 	<Animated.View
@@ -89,6 +93,7 @@ export default function Explore() {
 	>(null);
 
 	const [isAscending, setIsAscending] = useState(true);
+	const [letterIndex, setLetterIndex] = useState(0);
 
 	const searchProgress = useSharedValue(0);
 	const filterProgress = useSharedValue(0);
@@ -471,7 +476,7 @@ export default function Explore() {
 
 	const renderItem = useCallback(
 		({ item, index }: { item: Cocktail; index: number }) =>
-			item && !loading ? (
+			item && (!loading || letterIndex > 0) ? (
 				<Animated.View
 					exiting={FadeOutLeft.duration(300)}
 					style={styles.cardWrapper}>
@@ -493,7 +498,7 @@ export default function Explore() {
 					<SkeletonCard />
 				</View>
 			),
-		[handleToggleFavorite, loading, router],
+		[handleToggleFavorite, loading, letterIndex, router],
 	);
 
 	const listContentStyle = useMemo(
@@ -525,15 +530,17 @@ export default function Explore() {
 	}, [cocktails, isAscending]);
 
 	const listData = useMemo(() => {
-		if (loading && sortedCocktails.length === 0) {
+		if (loading && sortedCocktails.length === 0 && letterIndex === 0) {
 			return Array(4).fill(null) as any[];
 		}
 		return sortedCocktails;
-	}, [loading, sortedCocktails]);
+	}, [loading, sortedCocktails, letterIndex]);
 
 	useEffect(() => {
 		if (searchText.trim() === "" && !selectedFilterValue) {
-			searchCocktailsByFirstLetter(isAscending ? "a" : "z");
+			setLetterIndex(0);
+			const letters = isAscending ? ALPHABET_AZ : ALPHABET_ZA;
+			searchCocktailsByFirstLetter(letters[0], false);
 		}
 	}, [
 		searchText,
@@ -541,6 +548,34 @@ export default function Explore() {
 		isAscending,
 		searchCocktailsByFirstLetter,
 	]);
+
+	const handleLoadMore = useCallback(() => {
+		if (searchText.trim() !== "" || selectedFilterValue || loading) return;
+
+		const letters = isAscending ? ALPHABET_AZ : ALPHABET_ZA;
+		const nextIndex = letterIndex + 1;
+
+		if (nextIndex < letters.length) {
+			setLetterIndex(nextIndex);
+			searchCocktailsByFirstLetter(letters[nextIndex], true);
+		}
+	}, [
+		searchText,
+		selectedFilterValue,
+		loading,
+		isAscending,
+		letterIndex,
+		searchCocktailsByFirstLetter,
+	]);
+
+	const renderFooter = () => {
+		if (!loading || letterIndex === 0) return null;
+		return (
+			<View style={styles.footerLoader}>
+				<ActivityIndicator size="large" color={Colors[theme].tint} />
+			</View>
+		);
+	};
 
 	return (
 		<View
@@ -733,6 +768,9 @@ export default function Explore() {
 				initialNumToRender={8}
 				maxToRenderPerBatch={10}
 				windowSize={5}
+				onEndReached={handleLoadMore}
+				onEndReachedThreshold={0.5}
+				ListFooterComponent={renderFooter}
 			/>
 		</View>
 	);
@@ -854,5 +892,10 @@ const styles = StyleSheet.create({
 	},
 	cardWrapper: {
 		marginBottom: 24,
+	},
+	footerLoader: {
+		paddingVertical: 20,
+		alignItems: "center",
+		justifyContent: "center",
 	},
 });
