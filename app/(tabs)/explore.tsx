@@ -48,10 +48,10 @@ const EmptyFavorites = memo(() => (
 	<Animated.View
 		entering={FadeIn.duration(400).delay(200)}
 		style={styles.emptyContainer}>
-		<Text style={styles.emptyTitle}>Cerca tra i drink</Text>
+		<Text style={styles.emptyTitle}>Nessun drink trovato</Text>
 		<Text style={styles.emptySubtitle}>
-			Usa la barra di ricerca per trovare cocktail per nome, ingrediente,
-			categoria e molto altro! Esplora e salva i tuoi preferiti!
+			Prova a cercare un cocktail specifico o applica un filtro per
+			trovare qualcosa di interessante!
 		</Text>
 	</Animated.View>
 ));
@@ -99,6 +99,7 @@ export default function Explore() {
 		loading,
 		error,
 		searchCocktailsByName,
+		searchCocktailsByFirstLetter,
 		clearCocktails,
 		filterCocktailsByAlcoholic,
 		filterCocktailsByCategory,
@@ -152,8 +153,6 @@ export default function Explore() {
 				const query = text.trim();
 				if (query.length > 0) {
 					searchCocktailsByName(query);
-				} else {
-					clearCocktails();
 				}
 			}, 400);
 		},
@@ -525,6 +524,24 @@ export default function Explore() {
 		});
 	}, [cocktails, isAscending]);
 
+	const listData = useMemo(() => {
+		if (loading && sortedCocktails.length === 0) {
+			return Array(4).fill(null) as any[];
+		}
+		return sortedCocktails;
+	}, [loading, sortedCocktails]);
+
+	useEffect(() => {
+		if (searchText.trim() === "" && !selectedFilterValue) {
+			searchCocktailsByFirstLetter(isAscending ? "a" : "z");
+		}
+	}, [
+		searchText,
+		selectedFilterValue,
+		isAscending,
+		searchCocktailsByFirstLetter,
+	]);
+
 	return (
 		<View
 			style={[
@@ -707,7 +724,7 @@ export default function Explore() {
 			</View>
 
 			<Animated.FlatList
-				data={sortedCocktails}
+				data={listData}
 				contentContainerStyle={listContentStyle}
 				keyExtractor={keyExtractor}
 				renderItem={renderItem}
