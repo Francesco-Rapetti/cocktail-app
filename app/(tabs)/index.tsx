@@ -68,30 +68,35 @@ export default function Home() {
 	const {
 		cocktails: randomCocktails,
 		loading: randomCocktailsLoading,
+		error: randomCocktailsError,
 		getRandomCocktails,
 	} = useCocktails();
 
 	const {
 		cocktails: cocktailsByCategory,
 		loading: cocktailsByCategoryLoading,
+		error: cocktailsByCategoryError,
 		filterCocktailsByCategory,
 	} = useCocktails();
 
 	const {
 		cocktails: cocktailsByIngredient,
 		loading: cocktailsByIngredientLoading,
+		error: cocktailsByIngredientError,
 		filterCocktailsByIngredient,
 	} = useCocktails();
 
 	const {
 		cocktails: cocktailsByGlass,
 		loading: cocktailsByGlassLoading,
+		error: cocktailsByGlassError,
 		filterCocktailsByGlass,
 	} = useCocktails();
 
 	const {
 		cocktails: cocktailsByAlcoholicFilter,
 		loading: cocktailsByAlcoholicFilterLoading,
+		error: cocktailsByAlcoholicFilterError,
 		filterCocktailsByAlcoholic,
 	} = useCocktails();
 
@@ -102,6 +107,24 @@ export default function Home() {
 		alcoholicFilters,
 		toggleFavorite,
 	} = useAppStore();
+
+	useEffect(() => {
+		if (
+			randomCocktailsError ||
+			cocktailsByCategoryError ||
+			cocktailsByIngredientError ||
+			cocktailsByGlassError ||
+			cocktailsByAlcoholicFilterError
+		) {
+			setHasError(true);
+		}
+	}, [
+		randomCocktailsError,
+		cocktailsByCategoryError,
+		cocktailsByIngredientError,
+		cocktailsByGlassError,
+		cocktailsByAlcoholicFilterError,
+	]);
 
 	const init = useCallback(async () => {
 		setHasError(false);
