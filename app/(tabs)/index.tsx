@@ -7,7 +7,7 @@ import Colors from "@/constants/Colors";
 import { useCocktails } from "@/hooks/useCocktails";
 import { useAppStore } from "@/stores/AppStore";
 import { InitializeAppUseCase } from "@/useCases/InitializeAppUseCase";
-import { FontAwesome5 } from "@expo/vector-icons";
+import { Feather, FontAwesome5 } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -30,8 +30,8 @@ const TODO = () => {};
 const ErrorState = memo(
 	({ onRetry, theme }: { onRetry: () => void; theme: "light" | "dark" }) => (
 		<View style={styles.errorContainer}>
-			<FontAwesome5
-				name="wifi"
+			<Feather
+				name="wifi-off"
 				size={48}
 				color={Colors[theme].tint}
 				style={{ marginBottom: 16 }}
