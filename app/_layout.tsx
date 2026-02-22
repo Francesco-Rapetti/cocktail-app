@@ -1,3 +1,4 @@
+import Snackbar from "@/components/UI/SnackBar";
 import { usePersistenceSubscription } from "@/hooks/usePersistenceSubscription";
 import { useAppStore } from "@/stores/AppStore";
 import { InitializeAppUseCase } from "@/useCases/InitializeAppUseCase";
@@ -63,6 +64,7 @@ function RootLayoutNav() {
 	return (
 		<ThemeProvider
 			value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+			<Snackbar />
 			<Stack screenOptions={{ headerShown: false }}>
 				<Stack.Screen name="(tabs)" />
 				<Stack.Screen name="cocktailDetail" />

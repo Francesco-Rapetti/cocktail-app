@@ -1,5 +1,6 @@
 import { Cocktail } from '@/entities/Cocktail';
 import { CocktailRepository } from '@/repositories/CocktailRepository';
+import { useAppStore } from '@/stores/AppStore';
 import { useCallback, useRef, useState } from 'react';
 
 const repository = new CocktailRepository();
@@ -9,6 +10,7 @@ export const useCocktails = () => {
     const [cocktail, setCocktail] = useState<Cocktail | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const showError = useAppStore((state) => state.showSnackbar);
 
     const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -35,6 +37,7 @@ export const useCocktails = () => {
             }
 
             setError('Impossibile caricare i cocktail');
+            showError('Impossibile caricare i cocktail', 'error');
         } finally {
             if (!controller.signal.aborted) {
                 setLoading(false);
@@ -71,6 +74,7 @@ export const useCocktails = () => {
                 return;
             }
             setError('Impossibile caricare i cocktail');
+            showError('Impossibile caricare i cocktail', 'error');
         } finally {
             if (!controller.signal.aborted) {
                 setLoading(false);
@@ -88,6 +92,7 @@ export const useCocktails = () => {
             return cocktail;
         } catch (err) {
             setError('Impossibile caricare il cocktail');
+            showError('Impossibile caricare il cocktail', 'error');
             throw err;
         } finally {
             setLoading(false);
@@ -107,6 +112,7 @@ export const useCocktails = () => {
             }
         } catch (err) {
             setError('Impossibile caricare i cocktail');
+            showError('Impossibile caricare i cocktail', 'error');
         } finally {
             setLoading(false);
         }
@@ -130,6 +136,7 @@ export const useCocktails = () => {
             }
         } catch (err) {
             setError('Impossibile caricare i cocktail');
+            showError('Impossibile caricare i cocktail', 'error');
         } finally {
             setLoading(false);
         }
@@ -154,6 +161,7 @@ export const useCocktails = () => {
 
         } catch (err) {
             setError('Impossibile caricare i cocktail');
+            showError('Impossibile caricare i cocktail', 'error');
         } finally {
             setLoading(false);
         }
@@ -177,6 +185,7 @@ export const useCocktails = () => {
             }
         } catch (err) {
             setError('Impossibile caricare i cocktail');
+            showError('Impossibile caricare i cocktail', 'error');
         } finally {
             setLoading(false);
         }
@@ -200,6 +209,7 @@ export const useCocktails = () => {
             }
         } catch (err) {
             setError('Impossibile caricare i cocktail');
+            showError('Impossibile caricare i cocktail', 'error');
         } finally {
             setLoading(false);
         }
