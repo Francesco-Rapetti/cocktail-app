@@ -17,7 +17,6 @@ import {
 	Platform,
 	RefreshControl,
 	StyleSheet,
-	TouchableOpacity,
 	useColorScheme,
 	View,
 } from "react-native";
@@ -25,7 +24,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const SKELETON_DATA = [1, 2, 3] as any[];
 const LIST_SECTIONS = ["random", "category", "ingredient", "glass", "type"];
-const TODO = () => {};
 
 const ErrorState = memo(
 	({ onRetry, theme }: { onRetry: () => void; theme: "light" | "dark" }) => (
@@ -210,17 +208,13 @@ export default function Home() {
 	);
 
 	const renderHeader = useCallback(
-		(title: string, link: string, onPress: () => void) => (
+		(title: string, highlight: string) => (
 			<View style={styles.headerContainer}>
 				<Text maxFontSizeMultiplier={1} style={styles.headerTitle}>
 					{title}
 				</Text>
-				{link.length > 0 && (
-					<TouchableOpacity
-						activeOpacity={0.6}
-						onPress={onPress}
-						disabled={!onPress || onPress === TODO}
-						style={styles.headerLinkContainer}>
+				{highlight.length > 0 && (
+					<View style={styles.headerLinkContainer}>
 						<Text
 							maxFontSizeMultiplier={1}
 							numberOfLines={1}
@@ -228,9 +222,9 @@ export default function Home() {
 								styles.headerLink,
 								{ color: themeColors.tint },
 							]}>
-							{link}
+							{highlight}
 						</Text>
-					</TouchableOpacity>
+					</View>
 				)}
 			</View>
 		),
@@ -294,7 +288,6 @@ export default function Home() {
 								header={renderHeader(
 									`Drink per categoria`,
 									randomFilters.category,
-									TODO,
 								)}
 								data={
 									cocktailsByCategoryLoading
@@ -337,7 +330,6 @@ export default function Home() {
 								header={renderHeader(
 									`Drink per ingrediente`,
 									randomFilters.ingredient,
-									TODO,
 								)}
 								data={
 									cocktailsByIngredientLoading
@@ -380,7 +372,6 @@ export default function Home() {
 								header={renderHeader(
 									`Drink per bicchiere`,
 									randomFilters.glass,
-									TODO,
 								)}
 								data={
 									cocktailsByGlassLoading
@@ -422,7 +413,6 @@ export default function Home() {
 								header={renderHeader(
 									`Drink per tipo`,
 									randomFilters.alcoholic,
-									TODO,
 								)}
 								data={
 									cocktailsByAlcoholicFilterLoading
