@@ -56,7 +56,6 @@ const Card = ({
 							{title}
 						</Text>
 
-						{/* Mostriamo il sottotitolo solo se esiste */}
 						{hasSubtitle && (
 							<Text
 								numberOfLines={2}

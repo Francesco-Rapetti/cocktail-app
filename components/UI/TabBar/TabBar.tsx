@@ -134,7 +134,6 @@ export default function TabBar({
 			positions.current[index] = x;
 			widths.current[index] = w;
 
-			// aggiorna la max width (prima passata: larghezze naturali)
 			setMaxItemWidth((prev) => (prev == null || w > prev ? w : prev));
 		};
 
