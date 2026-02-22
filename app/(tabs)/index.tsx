@@ -10,7 +10,7 @@ import { FontAwesome5 } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
 	FlatList,
 	Platform,
@@ -26,11 +26,36 @@ const SKELETON_DATA = [1, 2, 3] as any[];
 const LIST_SECTIONS = ["random", "category", "ingredient", "glass", "type"];
 const TODO = () => {};
 
+const ErrorState = memo(
+	({ onRetry, theme }: { onRetry: () => void; theme: "light" | "dark" }) => (
+		<View style={styles.errorContainer}>
+			<FontAwesome5
+				name="wifi"
+				size={48}
+				color={Colors[theme].tint}
+				style={{ marginBottom: 16 }}
+			/>
+			<Text style={styles.errorTitle}>Nessuna connessione</Text>
+			<Text style={styles.errorSubtitle}>
+				Impossibile caricare i cocktail in questo momento. Controlla la
+				tua connessione internet e riprova.
+			</Text>
+			<Button
+				label="Riprova"
+				onPress={onRetry}
+				backgroundColor={Colors[theme].tint}
+				labelColor={Colors[theme].background}
+			/>
+		</View>
+	),
+);
+
 export default function Home() {
 	const theme = useColorScheme() ?? "light";
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const [refreshing, setRefreshing] = useState(false);
+	const [hasError, setHasError] = useState(false);
 
 	const themeColors = Colors[theme];
 
@@ -80,28 +105,42 @@ export default function Home() {
 	} = useAppStore();
 
 	const init = useCallback(async () => {
-		const cat = categories[Math.floor(Math.random() * categories.length)];
-		const ing = ingredients[Math.floor(Math.random() * ingredients.length)];
-		const gls = glasses[Math.floor(Math.random() * glasses.length)];
-		const alc =
-			alcoholicFilters[
-				Math.floor(Math.random() * alcoholicFilters.length)
-			];
+		setHasError(false);
 
-		setRandomFilters({
-			category: cat || "",
-			ingredient: ing || "",
-			glass: gls || "",
-			alcoholic: alc || "",
-		});
+		try {
+			const cat =
+				categories[Math.floor(Math.random() * categories.length)];
+			const ing =
+				ingredients[Math.floor(Math.random() * ingredients.length)];
+			const gls = glasses[Math.floor(Math.random() * glasses.length)];
+			const alc =
+				alcoholicFilters[
+					Math.floor(Math.random() * alcoholicFilters.length)
+				];
 
-		await Promise.all([
-			getRandomCocktails(5),
-			cat ? filterCocktailsByCategory(cat, true, 3) : Promise.resolve(),
-			ing ? filterCocktailsByIngredient(ing, true, 3) : Promise.resolve(),
-			gls ? filterCocktailsByGlass(gls, true, 3) : Promise.resolve(),
-			alc ? filterCocktailsByAlcoholic(alc, true, 3) : Promise.resolve(),
-		]);
+			setRandomFilters({
+				category: cat || "",
+				ingredient: ing || "",
+				glass: gls || "",
+				alcoholic: alc || "",
+			});
+
+			await Promise.all([
+				getRandomCocktails(5),
+				cat
+					? filterCocktailsByCategory(cat, true, 3)
+					: Promise.resolve(),
+				ing
+					? filterCocktailsByIngredient(ing, true, 3)
+					: Promise.resolve(),
+				gls ? filterCocktailsByGlass(gls, true, 3) : Promise.resolve(),
+				alc
+					? filterCocktailsByAlcoholic(alc, true, 3)
+					: Promise.resolve(),
+			]);
+		} catch (error) {
+			setHasError(true);
+		}
 	}, [
 		categories,
 		ingredients,
@@ -456,29 +495,35 @@ export default function Home() {
 				</View>
 			</View>
 
-			<FlatList
-				data={LIST_SECTIONS}
-				keyExtractor={(item) => item}
-				renderItem={renderListSection}
-				showsVerticalScrollIndicator={false}
-				initialNumToRender={2}
-				windowSize={3}
-				maxToRenderPerBatch={2}
-				removeClippedSubviews={Platform.OS === "android"}
-				refreshControl={
-					<RefreshControl
-						refreshing={refreshing}
-						onRefresh={onRefresh}
-						tintColor={themeColors.tint}
-						colors={[themeColors.tint]}
-						progressBackgroundColor={themeColors.surface}
-						title="Aggiorno le informazioni..."
-						titleColor={themeColors.tint}
-					/>
-				}
-				style={styles.container}
-				contentContainerStyle={contentContainerStyle}
-			/>
+			{hasError ? (
+				<View style={[contentContainerStyle, styles.errorWrapper]}>
+					<ErrorState onRetry={init} theme={theme} />
+				</View>
+			) : (
+				<FlatList
+					data={LIST_SECTIONS}
+					keyExtractor={(item) => item}
+					renderItem={renderListSection}
+					showsVerticalScrollIndicator={false}
+					initialNumToRender={2}
+					windowSize={3}
+					maxToRenderPerBatch={2}
+					removeClippedSubviews={Platform.OS === "android"}
+					refreshControl={
+						<RefreshControl
+							refreshing={refreshing}
+							onRefresh={onRefresh}
+							tintColor={themeColors.tint}
+							colors={[themeColors.tint]}
+							progressBackgroundColor={themeColors.surface}
+							title="Aggiorno le informazioni..."
+							titleColor={themeColors.tint}
+						/>
+					}
+					style={styles.container}
+					contentContainerStyle={contentContainerStyle}
+				/>
+			)}
 		</View>
 	);
 }
@@ -552,5 +597,28 @@ const styles = StyleSheet.create({
 		paddingVertical: 16,
 		boxShadow: `0 -3px 10px rgba(0,0,0,0.1)`,
 		elevation: 5,
+	},
+	errorWrapper: {
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	errorContainer: {
+		alignItems: "center",
+		justifyContent: "center",
+		paddingHorizontal: 32,
+		flex: 1,
+	},
+	errorTitle: {
+		fontSize: 24,
+		fontWeight: "bold",
+		marginBottom: 8,
+		textAlign: "center",
+	},
+	errorSubtitle: {
+		fontSize: 16,
+		opacity: 0.7,
+		textAlign: "center",
+		lineHeight: 24,
+		marginBottom: 24,
 	},
 });

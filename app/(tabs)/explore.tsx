@@ -10,6 +10,7 @@ import React, {
 import {
 	ActivityIndicator,
 	Platform,
+	RefreshControl,
 	ScrollView,
 	StyleSheet,
 	TextInput,
@@ -48,17 +49,53 @@ import { useRouter } from "expo-router";
 const ALPHABET_AZ = "0123456789abcdefghijklmnopqrstuvwxyz".split("");
 const ALPHABET_ZA = "zyxwvutsrqponmlkjihgfedcba9876543210".split("");
 
-const EmptyFavorites = memo(() => (
-	<Animated.View
-		entering={FadeIn.duration(400).delay(200)}
-		style={styles.emptyContainer}>
-		<Text style={styles.emptyTitle}>Nessun drink trovato</Text>
-		<Text style={styles.emptySubtitle}>
-			Prova a cercare un cocktail specifico o applica un filtro per
-			trovare qualcosa di interessante!
-		</Text>
-	</Animated.View>
-));
+const EmptyExploreState = memo(
+	({
+		error,
+		onRetry,
+		themeColors,
+	}: {
+		error: string | null;
+		onRetry: () => void;
+		themeColors: any;
+	}) => (
+		<Animated.View
+			entering={FadeIn.duration(400).delay(200)}
+			style={styles.emptyContainer}>
+			{error ? (
+				<>
+					<FontAwesome5
+						name="wifi"
+						size={48}
+						color={themeColors.tint}
+						style={{ marginBottom: 16 }}
+					/>
+					<Text style={styles.emptyTitle}>Nessuna connessione</Text>
+					<Text style={styles.emptySubtitle}>
+						Impossibile caricare i cocktail in questo momento.
+						Controlla la rete e riprova!
+					</Text>
+					<View style={{ marginTop: 16 }}>
+						<Button
+							label="Riprova"
+							onPress={onRetry}
+							backgroundColor={themeColors.tint}
+							labelColor={themeColors.background}
+						/>
+					</View>
+				</>
+			) : (
+				<>
+					<Text style={styles.emptyTitle}>Nessun drink trovato</Text>
+					<Text style={styles.emptySubtitle}>
+						Prova a cercare un cocktail specifico o applica un
+						filtro per trovare qualcosa di interessante!
+					</Text>
+				</>
+			)}
+		</Animated.View>
+	),
+);
 
 const FILTER_OPTIONS = [
 	{ id: "alcoholic", label: "Alcolico" },
@@ -79,6 +116,8 @@ export default function Explore() {
 		glasses,
 		alcoholicFilters,
 	} = useAppStore();
+
+	const [refreshing, setRefreshing] = useState(false);
 
 	const [isSearchActive, setIsSearchActive] = useState(false);
 	const [searchText, setSearchText] = useState("");
@@ -105,12 +144,53 @@ export default function Explore() {
 		error,
 		searchCocktailsByName,
 		searchCocktailsByFirstLetter,
-		clearCocktails,
 		filterCocktailsByAlcoholic,
 		filterCocktailsByCategory,
 		filterCocktailsByGlass,
 		filterCocktailsByIngredient,
 	} = useCocktails();
+
+	const fetchCurrentData = useCallback(async () => {
+		if (searchText.trim().length > 0) {
+			await searchCocktailsByName(searchText.trim());
+		} else if (selectedFilterValue && activeFilterCategory) {
+			switch (activeFilterCategory) {
+				case "alcoholic":
+					await filterCocktailsByAlcoholic(selectedFilterValue);
+					break;
+				case "category":
+					await filterCocktailsByCategory(selectedFilterValue);
+					break;
+				case "ingredient":
+					await filterCocktailsByIngredient(selectedFilterValue);
+					break;
+				case "glass":
+					await filterCocktailsByGlass(selectedFilterValue);
+					break;
+			}
+		} else {
+			setLetterIndex(0);
+			const letters = isAscending ? ALPHABET_AZ : ALPHABET_ZA;
+			await searchCocktailsByFirstLetter(letters[0], false);
+		}
+	}, [
+		searchText,
+		selectedFilterValue,
+		activeFilterCategory,
+		isAscending,
+		searchCocktailsByName,
+		filterCocktailsByAlcoholic,
+		filterCocktailsByCategory,
+		filterCocktailsByIngredient,
+		filterCocktailsByGlass,
+		searchCocktailsByFirstLetter,
+	]);
+
+	const onRefresh = useCallback(async () => {
+		setRefreshing(true);
+		await fetchCurrentData();
+		setRefreshing(false);
+	}, [fetchCurrentData]);
 
 	const openSearch = useCallback(() => {
 		setIsSearchActive(true);
@@ -568,8 +648,36 @@ export default function Explore() {
 		searchCocktailsByFirstLetter,
 	]);
 
+	useEffect(() => {
+		if (
+			!loading &&
+			(!cocktails || cocktails.length === 0) &&
+			searchText.trim() === "" &&
+			!selectedFilterValue
+		) {
+			const letters = isAscending ? ALPHABET_AZ : ALPHABET_ZA;
+			if (letterIndex < letters.length - 1) {
+				handleLoadMore();
+			}
+		}
+	}, [
+		cocktails,
+		loading,
+		searchText,
+		selectedFilterValue,
+		letterIndex,
+		isAscending,
+		handleLoadMore,
+	]);
+
 	const renderFooter = () => {
-		if (!loading || letterIndex === 0) return null;
+		if (
+			!loading ||
+			letterIndex === 0 ||
+			searchText.trim() !== "" ||
+			selectedFilterValue
+		)
+			return null;
 		return (
 			<View style={styles.footerLoader}>
 				<ActivityIndicator size="large" color={Colors[theme].tint} />
@@ -763,7 +871,24 @@ export default function Explore() {
 				contentContainerStyle={listContentStyle}
 				keyExtractor={keyExtractor}
 				renderItem={renderItem}
-				ListEmptyComponent={EmptyFavorites}
+				ListEmptyComponent={
+					<EmptyExploreState
+						error={error}
+						onRetry={fetchCurrentData}
+						themeColors={Colors[theme]}
+					/>
+				}
+				refreshControl={
+					<RefreshControl
+						refreshing={refreshing}
+						onRefresh={onRefresh}
+						tintColor={Colors[theme].tint}
+						colors={[Colors[theme].tint]}
+						progressBackgroundColor={Colors[theme].surface}
+						title="Aggiorno i cocktail..."
+						titleColor={Colors[theme].tint}
+					/>
+				}
 				itemLayoutAnimation={LinearTransition.springify()}
 				initialNumToRender={8}
 				maxToRenderPerBatch={10}
