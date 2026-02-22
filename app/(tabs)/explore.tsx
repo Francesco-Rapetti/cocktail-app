@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import { useRouter } from "expo-router";
 import React, {
 	memo,
 	useCallback,
@@ -11,27 +12,23 @@ import {
 	ActivityIndicator,
 	Platform,
 	RefreshControl,
-	ScrollView,
 	StyleSheet,
-	TextInput,
 	useColorScheme,
 } from "react-native";
 import Animated, {
-	Extrapolation,
 	FadeIn,
 	FadeOutLeft,
-	interpolate,
 	LinearTransition,
-	useAnimatedStyle,
-	useSharedValue,
-	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Button from "@/components/UI/Button";
 import Card from "@/components/UI/Card/Card";
 import SkeletonCard from "@/components/UI/Card/SkeletonCard";
-import Pressable from "@/components/UI/Pressable";
+import SearchAndFilterBar, {
+	FilterOption,
+} from "@/components/UI/SearchAndFilterBar";
+import SortButton from "@/components/UI/SortButton";
 import { Text, View } from "@/components/UI/Themed";
 import Colors from "@/constants/Colors";
 import { Cocktail } from "@/entities/Cocktail";
@@ -39,13 +36,11 @@ import { useCocktails } from "@/hooks/useCocktails";
 import { useAppStore } from "@/stores/AppStore";
 import { InitializeAppUseCase } from "@/useCases/InitializeAppUseCase";
 import {
-	Entypo,
+	Feather,
 	FontAwesome5,
 	FontAwesome6,
-	Ionicons,
 	MaterialIcons,
 } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 
 const ALPHABET_AZ = "0123456789abcdefghijklmnopqrstuvwxyz".split("");
 const ALPHABET_ZA = "zyxwvutsrqponmlkjihgfedcba9876543210".split("");
@@ -65,8 +60,8 @@ const EmptyExploreState = memo(
 			style={styles.emptyContainer}>
 			{error ? (
 				<>
-					<FontAwesome5
-						name="wifi"
+					<Feather
+						name="wifi-off"
 						size={48}
 						color={themeColors.tint}
 						style={{ marginBottom: 16 }}
@@ -98,15 +93,9 @@ const EmptyExploreState = memo(
 	),
 );
 
-const FILTER_OPTIONS = [
-	{ id: "alcoholic", label: "Alcolico" },
-	{ id: "category", label: "Categoria" },
-	{ id: "ingredient", label: "Ingrediente" },
-	{ id: "glass", label: "Bicchiere" },
-];
-
 export default function Explore() {
 	const theme = useColorScheme() ?? "light";
+	const colors = Colors[theme];
 	const insets = useSafeAreaInsets();
 	const router = useRouter();
 
@@ -120,11 +109,7 @@ export default function Explore() {
 
 	const [refreshing, setRefreshing] = useState(false);
 
-	const [isSearchActive, setIsSearchActive] = useState(false);
 	const [searchText, setSearchText] = useState("");
-	const inputRef = useRef<TextInput>(null);
-
-	const [isFilterActive, setIsFilterActive] = useState(false);
 	const [activeFilterCategory, setActiveFilterCategory] = useState<
 		string | null
 	>(null);
@@ -134,10 +119,6 @@ export default function Explore() {
 
 	const [isAscending, setIsAscending] = useState(true);
 	const [letterIndex, setLetterIndex] = useState(0);
-
-	const searchProgress = useSharedValue(0);
-	const filterProgress = useSharedValue(0);
-	const accordionProgress = useSharedValue(0);
 
 	const {
 		cocktails,
@@ -150,6 +131,62 @@ export default function Explore() {
 		filterCocktailsByGlass,
 		filterCocktailsByIngredient,
 	} = useCocktails();
+
+	const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const filterOptions: FilterOption[] = useMemo(
+		() => [
+			{
+				id: "alcoholic",
+				label: "Alcolico",
+				data: alcoholicFilters || [],
+				icon: (
+					<FontAwesome5
+						name="cocktail"
+						size={24}
+						color={colors.background}
+					/>
+				),
+			},
+			{
+				id: "category",
+				label: "Categoria",
+				data: categories || [],
+				icon: (
+					<MaterialIcons
+						name="category"
+						size={24}
+						color={colors.background}
+					/>
+				),
+			},
+			{
+				id: "ingredient",
+				label: "Ingrediente",
+				data: ingredients || [],
+				icon: (
+					<FontAwesome6
+						name="lemon"
+						size={24}
+						color={colors.background}
+					/>
+				),
+			},
+			{
+				id: "glass",
+				label: "Bicchiere",
+				data: glasses || [],
+				icon: (
+					<FontAwesome5
+						name="glass-whiskey"
+						size={24}
+						color={colors.background}
+					/>
+				),
+			},
+		],
+		[alcoholicFilters, categories, ingredients, glasses, colors],
+	);
 
 	const fetchCurrentData = useCallback(async () => {
 		if (categories.length === 0) {
@@ -199,327 +236,60 @@ export default function Explore() {
 		setRefreshing(false);
 	}, [fetchCurrentData]);
 
-	const openSearch = useCallback(() => {
-		setIsSearchActive(true);
-		searchProgress.value = withTiming(1, { duration: 500 });
-		setTimeout(() => inputRef.current?.focus(), 50);
-	}, [searchProgress]);
-
-	const closeSearch = useCallback(() => {
-		inputRef.current?.blur();
-		setSearchText("");
-		setIsSearchActive(false);
-		searchProgress.value = withTiming(0, { duration: 500 });
-
-		if (searchTimerRef.current) {
-			clearTimeout(searchTimerRef.current);
-		}
-	}, [searchProgress]);
-
-	const openFilter = useCallback(() => {
-		setIsFilterActive(true);
-		setActiveFilterCategory(null);
-		filterProgress.value = withTiming(1, { duration: 500 });
-		accordionProgress.value = withTiming(1, { duration: 500 });
-	}, [filterProgress, accordionProgress]);
-
-	const closeFilter = useCallback(() => {
-		setIsFilterActive(false);
-		setSelectedFilterValue(null);
-		setActiveFilterCategory(null);
-		filterProgress.value = withTiming(0, { duration: 500 });
-		accordionProgress.value = withTiming(0, { duration: 500 });
-	}, [filterProgress, accordionProgress]);
-
-	const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
 	const handleSearchChange = useCallback(
 		(text: string) => {
 			setSearchText(text);
 
-			if (searchTimerRef.current) {
-				clearTimeout(searchTimerRef.current);
-			}
+			if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
 
 			searchTimerRef.current = setTimeout(() => {
 				const query = text.trim();
-				if (query.length > 0) {
-					searchCocktailsByName(query);
-				}
+				if (query.length > 0) searchCocktailsByName(query);
 			}, 400);
 		},
 		[searchCocktailsByName],
 	);
 
-	useEffect(() => {
-		return () => {
-			if (searchTimerRef.current) {
-				clearTimeout(searchTimerRef.current);
-			}
-		};
+	const handleSearchClear = useCallback(() => {
+		setSearchText("");
+		if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
 	}, []);
 
-	const toggleAccordion = useCallback(() => {
-		if (accordionProgress.value === 0) {
-			accordionProgress.value = withTiming(1, { duration: 400 });
-		} else {
-			accordionProgress.value = withTiming(0, { duration: 400 });
-		}
-	}, [accordionProgress]);
-
-	const handleSelectPrimaryCategory = useCallback((id: string) => {
-		setActiveFilterCategory(id);
-	}, []);
-
-	const handleSelectSubCategory = useCallback(
-		(value: string) => {
+	const handleFilterSelect = useCallback(
+		(categoryId: string, value: string) => {
+			setActiveFilterCategory(categoryId);
 			setSelectedFilterValue(value);
-			accordionProgress.value = withTiming(0, { duration: 400 });
 
-			if (activeFilterCategory === "alcoholic")
-				filterCocktailsByAlcoholic(value);
-			else if (activeFilterCategory === "category")
-				filterCocktailsByCategory(value);
-			else if (activeFilterCategory === "ingredient")
-				filterCocktailsByIngredient(value);
-			else if (activeFilterCategory === "glass")
-				filterCocktailsByGlass(value);
+			switch (categoryId) {
+				case "alcoholic":
+					filterCocktailsByAlcoholic(value);
+					break;
+				case "category":
+					filterCocktailsByCategory(value);
+					break;
+				case "ingredient":
+					filterCocktailsByIngredient(value);
+					break;
+				case "glass":
+					filterCocktailsByGlass(value);
+					break;
+			}
 		},
 		[
-			activeFilterCategory,
 			filterCocktailsByAlcoholic,
 			filterCocktailsByCategory,
-			filterCocktailsByGlass,
 			filterCocktailsByIngredient,
-			accordionProgress,
+			filterCocktailsByGlass,
 		],
 	);
 
-	const renderAccordionContent = () => {
-		if (!activeFilterCategory) {
-			return FILTER_OPTIONS.map((option, index) => (
-				<Pressable
-					key={option.id}
-					style={[
-						styles.accordionOption,
-						index !== FILTER_OPTIONS.length - 1 && {
-							borderBottomWidth: 1,
-							borderBottomColor: Colors[theme].background + "20",
-						},
-					]}
-					onPress={() => handleSelectPrimaryCategory(option.id)}>
-					<Text
-						style={[
-							styles.accordionText,
-							{ color: Colors[theme].background },
-						]}>
-						{option.label}
-					</Text>
-					<MaterialIcons
-						name="chevron-right"
-						size={20}
-						color={Colors[theme].background}
-					/>
-				</Pressable>
-			));
-		}
-
-		let data: string[] = [];
-
-		if (activeFilterCategory === "alcoholic") {
-			data = alcoholicFilters || [];
-		} else if (activeFilterCategory === "category") {
-			data = categories || [];
-		} else if (activeFilterCategory === "ingredient") {
-			data = ingredients || [];
-		} else if (activeFilterCategory === "glass") {
-			data = glasses || [];
-		}
-
-		return (
-			<ScrollView style={styles.accordionScroll} nestedScrollEnabled>
-				<Pressable
-					style={styles.backOption}
-					onPress={() => setActiveFilterCategory(null)}>
-					<MaterialIcons
-						name="arrow-back"
-						size={20}
-						color={Colors[theme].background}
-					/>
-					<Text
-						style={[
-							styles.accordionText,
-							{
-								color: Colors[theme].background,
-								fontWeight: "bold",
-							},
-						]}>
-						Indietro
-					</Text>
-				</Pressable>
-
-				{(data || []).map((item, index) => (
-					<Pressable
-						key={`${activeFilterCategory}-${index}`}
-						style={[
-							styles.accordionOption,
-							{
-								borderBottomWidth: 1,
-								borderBottomColor:
-									Colors[theme].background + "10",
-							},
-						]}
-						onPress={() => handleSelectSubCategory(item)}>
-						<Text
-							style={[
-								styles.accordionText,
-								{ color: Colors[theme].background },
-							]}>
-							{item}
-						</Text>
-					</Pressable>
-				))}
-			</ScrollView>
-		);
-	};
-
-	const searchBaseStyle = useAnimatedStyle(() => ({
-		flex: 1,
-		borderTopRightRadius: interpolate(
-			searchProgress.value,
-			[0, 1],
-			[4, 50],
-			Extrapolation.CLAMP,
-		),
-		borderBottomRightRadius: interpolate(
-			searchProgress.value,
-			[0, 1],
-			[4, 50],
-			Extrapolation.CLAMP,
-		),
-		maxWidth: interpolate(
-			filterProgress.value,
-			[0, 1],
-			[2000, 0],
-			Extrapolation.CLAMP,
-		),
-		opacity: interpolate(
-			filterProgress.value,
-			[0, 0.3, 1],
-			[1, 0, 0],
-			Extrapolation.CLAMP,
-		),
-	}));
-
-	const filterContainerStyle = useAnimatedStyle(() => {
-		const isAnyActive = Math.max(
-			searchProgress.value,
-			filterProgress.value,
-		);
-		return {
-			flex: 1,
-			borderTopLeftRadius: interpolate(
-				filterProgress.value,
-				[0, 1],
-				[4, 50],
-				Extrapolation.CLAMP,
-			),
-			borderBottomLeftRadius: interpolate(
-				filterProgress.value,
-				[0, 1],
-				[4, 50],
-				Extrapolation.CLAMP,
-			),
-			maxWidth: interpolate(
-				searchProgress.value,
-				[0, 1],
-				[2000, 0],
-				Extrapolation.CLAMP,
-			),
-			marginLeft: interpolate(
-				isAnyActive,
-				[0, 1],
-				[4, 0],
-				Extrapolation.CLAMP,
-			),
-			opacity: interpolate(
-				searchProgress.value,
-				[0, 0.3, 1],
-				[1, 0, 0],
-				Extrapolation.CLAMP,
-			),
-		};
-	});
-
-	const inactiveSearchRowStyle = useAnimatedStyle(() => ({
-		opacity: interpolate(
-			searchProgress.value,
-			[0, 0.4],
-			[1, 0],
-			Extrapolation.CLAMP,
-		),
-		transform: [
-			{ scale: interpolate(searchProgress.value, [0, 1], [1, 0.9]) },
-		],
-	}));
-	const activeSearchRowStyle = useAnimatedStyle(() => ({
-		opacity: interpolate(
-			searchProgress.value,
-			[0.6, 1],
-			[0, 1],
-			Extrapolation.CLAMP,
-		),
-		transform: [
-			{ scale: interpolate(searchProgress.value, [0, 1], [0.95, 1]) },
-		],
-	}));
-
-	const inactiveFilterRowStyle = useAnimatedStyle(() => ({
-		opacity: interpolate(
-			filterProgress.value,
-			[0, 0.4],
-			[1, 0],
-			Extrapolation.CLAMP,
-		),
-		transform: [
-			{ scale: interpolate(filterProgress.value, [0, 1], [1, 0.9]) },
-		],
-	}));
-	const activeFilterRowStyle = useAnimatedStyle(() => ({
-		opacity: interpolate(
-			filterProgress.value,
-			[0.6, 1],
-			[0, 1],
-			Extrapolation.CLAMP,
-		),
-		transform: [
-			{ scale: interpolate(filterProgress.value, [0, 1], [0.95, 1]) },
-		],
-	}));
-
-	const accordionStyle = useAnimatedStyle(() => ({
-		maxHeight: interpolate(
-			accordionProgress.value,
-			[0, 1],
-			[0, 350],
-			Extrapolation.CLAMP,
-		),
-		opacity: interpolate(
-			accordionProgress.value,
-			[0, 0.8, 1],
-			[0, 0, 1],
-			Extrapolation.CLAMP,
-		),
-		marginTop: interpolate(
-			accordionProgress.value,
-			[0, 1],
-			[0, 8],
-			Extrapolation.CLAMP,
-		),
-	}));
+	const handleFilterClear = useCallback(() => {
+		setActiveFilterCategory(null);
+		setSelectedFilterValue(null);
+	}, []);
 
 	const handleToggleFavorite = useCallback(
-		(item: any) => {
+		(item: Cocktail) => {
 			toggleFavorite({
 				idDrink: item.idDrink,
 				strDrink: item.strDrink,
@@ -529,37 +299,66 @@ export default function Explore() {
 		[toggleFavorite],
 	);
 
-	const renderFilterIcon = useCallback(() => {
-		const iconColor = Colors[theme].background;
-		switch (activeFilterCategory) {
-			case "alcoholic":
-				return (
-					<FontAwesome5 name="cocktail" size={24} color={iconColor} />
-				);
-			case "category":
-				return (
-					<MaterialIcons
-						name="category"
-						size={24}
-						color={iconColor}
-					/>
-				);
-			case "ingredient":
-				return (
-					<FontAwesome6 name="lemon" size={24} color={iconColor} />
-				);
-			case "glass":
-				return (
-					<FontAwesome5
-						name="glass-whiskey"
-						size={24}
-						color={iconColor}
-					/>
-				);
-			default:
-				return <Ionicons name="filter" size={24} color={iconColor} />;
+	const handleLoadMore = useCallback(() => {
+		if (searchText.trim() !== "" || selectedFilterValue || loading) return;
+
+		const letters = isAscending ? ALPHABET_AZ : ALPHABET_ZA;
+		const nextIndex = letterIndex + 1;
+
+		if (nextIndex < letters.length) {
+			setLetterIndex(nextIndex);
+			searchCocktailsByFirstLetter(letters[nextIndex], true);
 		}
-	}, [activeFilterCategory, theme]);
+	}, [
+		searchText,
+		selectedFilterValue,
+		loading,
+		isAscending,
+		letterIndex,
+		searchCocktailsByFirstLetter,
+	]);
+
+	useEffect(() => {
+		return () => {
+			if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+		};
+	}, []);
+
+	useEffect(() => {
+		if (searchText.trim() === "" && !selectedFilterValue) {
+			setLetterIndex(0);
+			const letters = isAscending ? ALPHABET_AZ : ALPHABET_ZA;
+			searchCocktailsByFirstLetter(letters[0], false);
+		}
+	}, [
+		searchText,
+		selectedFilterValue,
+		isAscending,
+		searchCocktailsByFirstLetter,
+	]);
+
+	useEffect(() => {
+		if (
+			!loading &&
+			(!cocktails || cocktails.length === 0) &&
+			searchText.trim() === "" &&
+			!selectedFilterValue &&
+			!error
+		) {
+			const letters = isAscending ? ALPHABET_AZ : ALPHABET_ZA;
+			if (letterIndex < letters.length - 1) {
+				handleLoadMore();
+			}
+		}
+	}, [
+		cocktails,
+		loading,
+		searchText,
+		selectedFilterValue,
+		letterIndex,
+		isAscending,
+		handleLoadMore,
+	]);
 
 	const renderItem = useCallback(
 		({ item, index }: { item: Cocktail; index: number }) =>
@@ -588,31 +387,11 @@ export default function Explore() {
 		[handleToggleFavorite, loading, letterIndex, router],
 	);
 
-	const listContentStyle = useMemo(
-		() => ({
-			paddingBottom:
-				insets.bottom + 16 + (Platform.OS === "ios" ? 100 : 120),
-			marginHorizontal: 16,
-			flexGrow: 1,
-		}),
-		[insets.bottom],
-	);
-
-	const keyExtractor = useCallback(
-		(item: Cocktail, index: number) =>
-			item?.idDrink ? item.idDrink : `skeleton-${index}`,
-		[],
-	);
-
 	const sortedCocktails = useMemo(() => {
 		if (!cocktails) return [];
-
 		return [...cocktails].sort((a, b) => {
-			if (isAscending) {
-				return a.strDrink.localeCompare(b.strDrink);
-			} else {
-				return b.strDrink.localeCompare(a.strDrink);
-			}
+			if (isAscending) return a.strDrink.localeCompare(b.strDrink);
+			else return b.strDrink.localeCompare(a.strDrink);
 		});
 	}, [cocktails, isAscending]);
 
@@ -623,59 +402,15 @@ export default function Explore() {
 		return sortedCocktails;
 	}, [loading, sortedCocktails, letterIndex]);
 
-	useEffect(() => {
-		if (searchText.trim() === "" && !selectedFilterValue) {
-			setLetterIndex(0);
-			const letters = isAscending ? ALPHABET_AZ : ALPHABET_ZA;
-			searchCocktailsByFirstLetter(letters[0], false);
-		}
-	}, [
-		searchText,
-		selectedFilterValue,
-		isAscending,
-		searchCocktailsByFirstLetter,
-	]);
-
-	const handleLoadMore = useCallback(() => {
-		if (searchText.trim() !== "" || selectedFilterValue || loading) return;
-
-		const letters = isAscending ? ALPHABET_AZ : ALPHABET_ZA;
-		const nextIndex = letterIndex + 1;
-
-		if (nextIndex < letters.length) {
-			setLetterIndex(nextIndex);
-			searchCocktailsByFirstLetter(letters[nextIndex], true);
-		}
-	}, [
-		searchText,
-		selectedFilterValue,
-		loading,
-		isAscending,
-		letterIndex,
-		searchCocktailsByFirstLetter,
-	]);
-
-	useEffect(() => {
-		if (
-			!loading &&
-			(!cocktails || cocktails.length === 0) &&
-			searchText.trim() === "" &&
-			!selectedFilterValue
-		) {
-			const letters = isAscending ? ALPHABET_AZ : ALPHABET_ZA;
-			if (letterIndex < letters.length - 1) {
-				handleLoadMore();
-			}
-		}
-	}, [
-		cocktails,
-		loading,
-		searchText,
-		selectedFilterValue,
-		letterIndex,
-		isAscending,
-		handleLoadMore,
-	]);
+	const listContentStyle = useMemo(
+		() => ({
+			paddingBottom:
+				insets.bottom + 16 + (Platform.OS === "ios" ? 100 : 120),
+			marginHorizontal: 16,
+			flexGrow: 1,
+		}),
+		[insets.bottom],
+	);
 
 	const renderFooter = () => {
 		if (
@@ -687,7 +422,7 @@ export default function Explore() {
 			return null;
 		return (
 			<View style={styles.footerLoader}>
-				<ActivityIndicator size="large" color={Colors[theme].tint} />
+				<ActivityIndicator size="large" color={colors.tint} />
 			</View>
 		);
 	};
@@ -706,194 +441,48 @@ export default function Explore() {
 					Esplora i cocktail
 				</Text>
 
-				<Button
-					label={isAscending ? "A-Z" : "Z-A"}
-					onPress={() => setIsAscending((prev) => !prev)}
-					IconLeft={() => (
-						<FontAwesome6
-							name={
-								isAscending ? "arrow-down-a-z" : "arrow-up-a-z"
-							}
-							size={18}
-							color={Colors[theme].background}
-						/>
-					)}
-					backgroundColor={Colors[theme].tint}
-					labelColor={Colors[theme].background}
+				<SortButton
+					isAscending={isAscending}
+					onToggle={() => setIsAscending((prev) => !prev)}
+					backgroundColor={colors.tint}
+					color={colors.background}
 				/>
 			</View>
 
-			<View style={styles.actionsWrapper}>
-				<View style={styles.actionsRow}>
-					<Animated.View
-						style={[
-							styles.baseLayout,
-							{
-								backgroundColor: Colors[theme].tint,
-								borderTopLeftRadius: 50,
-								borderBottomLeftRadius: 50,
-							},
-							searchBaseStyle,
-						]}>
-						<Animated.View
-							style={[
-								styles.absoluteCenterRow,
-								inactiveSearchRowStyle,
-							]}
-							pointerEvents={isSearchActive ? "none" : "auto"}>
-							<Pressable
-								onPress={openSearch}
-								disabled={isFilterActive}
-								style={styles.pressableRow}>
-								<Entypo
-									name="magnifying-glass"
-									size={24}
-									color={Colors[theme].background}
-								/>
-								<Text
-									style={[
-										styles.actionText,
-										{ color: Colors[theme].background },
-									]}>
-									Cerca
-								</Text>
-							</Pressable>
-						</Animated.View>
-
-						<Animated.View
-							style={[styles.activeRow, activeSearchRowStyle]}
-							pointerEvents={isSearchActive ? "auto" : "none"}>
-							<Entypo
-								name="magnifying-glass"
-								size={24}
-								color={Colors[theme].background}
-							/>
-							<TextInput
-								ref={inputRef}
-								style={[
-									styles.searchInput,
-									{ color: Colors[theme].background },
-								]}
-								placeholder="Cerca cocktail..."
-								placeholderTextColor={
-									Colors[theme].background + "80"
-								}
-								value={searchText}
-								onChangeText={handleSearchChange}
-								selectionColor={Colors[theme].background}
-							/>
-							<Pressable
-								onPress={closeSearch}
-								style={styles.iconButton}>
-								<Ionicons
-									name="close"
-									size={24}
-									color={Colors[theme].background}
-								/>
-							</Pressable>
-						</Animated.View>
-					</Animated.View>
-
-					<Animated.View
-						style={[
-							styles.baseLayout,
-							{
-								backgroundColor: Colors[theme].tint,
-								borderTopRightRadius: 50,
-								borderBottomRightRadius: 50,
-							},
-							filterContainerStyle,
-						]}>
-						<Animated.View
-							style={[
-								styles.absoluteCenterRow,
-								inactiveFilterRowStyle,
-							]}
-							pointerEvents={isFilterActive ? "none" : "auto"}>
-							<Pressable
-								onPress={openFilter}
-								disabled={isSearchActive}
-								style={styles.pressableRow}>
-								<Ionicons
-									name="filter"
-									size={24}
-									color={Colors[theme].background}
-								/>
-								<Text
-									style={[
-										styles.actionText,
-										{ color: Colors[theme].background },
-									]}>
-									Filtra
-								</Text>
-							</Pressable>
-						</Animated.View>
-
-						<Animated.View
-							style={[styles.activeRow, activeFilterRowStyle]}
-							pointerEvents={isFilterActive ? "auto" : "none"}>
-							<Pressable
-								onPress={toggleAccordion}
-								style={styles.activeFilterRow}>
-								{renderFilterIcon()}
-
-								<Text
-									numberOfLines={1}
-									style={[
-										styles.actionText,
-										styles.activeFilterText,
-										{ color: Colors[theme].background },
-									]}>
-									{selectedFilterValue
-										? selectedFilterValue
-										: "Seleziona filtro..."}
-								</Text>
-							</Pressable>
-
-							<Pressable
-								onPress={closeFilter}
-								style={styles.iconButton}>
-								<Ionicons
-									name="close"
-									size={24}
-									color={Colors[theme].background}
-								/>
-							</Pressable>
-						</Animated.View>
-					</Animated.View>
-				</View>
-
-				<Animated.View
-					style={[
-						styles.accordionContainer,
-						{ backgroundColor: Colors[theme].tint },
-						accordionStyle,
-					]}>
-					{renderAccordionContent()}
-				</Animated.View>
-			</View>
+			<SearchAndFilterBar
+				colors={colors}
+				searchValue={searchText}
+				onSearchChange={handleSearchChange}
+				onSearchClear={handleSearchClear}
+				filterOptions={filterOptions}
+				selectedFilterValue={selectedFilterValue}
+				onFilterSelect={handleFilterSelect}
+				onFilterClear={handleFilterClear}
+			/>
 
 			<Animated.FlatList
 				data={listData}
 				contentContainerStyle={listContentStyle}
-				keyExtractor={keyExtractor}
+				keyExtractor={(item, index) =>
+					item?.idDrink ? item.idDrink : `skeleton-${index}`
+				}
 				renderItem={renderItem}
 				ListEmptyComponent={
 					<EmptyExploreState
 						error={error}
 						onRetry={fetchCurrentData}
-						themeColors={Colors[theme]}
+						themeColors={colors}
 					/>
 				}
 				refreshControl={
 					<RefreshControl
 						refreshing={refreshing}
 						onRefresh={onRefresh}
-						tintColor={Colors[theme].tint}
-						colors={[Colors[theme].tint]}
-						progressBackgroundColor={Colors[theme].surface}
-						title="Aggiorno i cocktail..."
-						titleColor={Colors[theme].tint}
+						tintColor={colors.tint}
+						colors={[colors.tint]}
+						progressBackgroundColor={colors.surface}
+						title="Aggiorno i drink..."
+						titleColor={colors.tint}
 					/>
 				}
 				itemLayoutAnimation={LinearTransition.springify()}
@@ -922,87 +511,6 @@ const styles = StyleSheet.create({
 	title: {
 		fontSize: 32,
 		fontWeight: "bold",
-	},
-	actionsWrapper: {
-		marginBottom: 16,
-		marginHorizontal: 16,
-	},
-	actionsRow: {
-		flexDirection: "row",
-	},
-	baseLayout: {
-		height: 48,
-		justifyContent: "center",
-		overflow: "hidden",
-	},
-	absoluteCenterRow: {
-		...StyleSheet.absoluteFillObject,
-		justifyContent: "center",
-		alignItems: "center",
-		paddingHorizontal: 12,
-	},
-	activeRow: {
-		flex: 1,
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 8,
-		paddingHorizontal: 12,
-	},
-	activeFilterRow: {
-		flex: 1,
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 8,
-	},
-	pressableRow: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "center",
-		gap: 8,
-		width: "100%",
-		height: "100%",
-	},
-	activeFilterText: {
-		flex: 1,
-		textAlign: "left",
-	},
-	searchInput: {
-		flex: 1,
-		fontSize: 16,
-		padding: 0,
-		height: "100%",
-	},
-	iconButton: {
-		padding: 4,
-		marginRight: -4,
-	},
-	actionText: {
-		fontSize: 16,
-	},
-	accordionContainer: {
-		borderRadius: 16,
-		overflow: "hidden",
-	},
-	accordionOption: {
-		flexDirection: "row",
-		justifyContent: "space-between",
-		alignItems: "center",
-		paddingVertical: 14,
-		paddingHorizontal: 16,
-	},
-	accordionScroll: {
-		maxHeight: 350,
-	},
-	accordionText: {
-		fontSize: 16,
-	},
-	backOption: {
-		flexDirection: "row",
-		alignItems: "center",
-		paddingVertical: 14,
-		paddingHorizontal: 16,
-		gap: 8,
-		backgroundColor: "rgba(0,0,0,0.1)",
 	},
 	emptyContainer: {
 		flex: 1,
