@@ -6,6 +6,7 @@ import { Text } from "@/components/UI/Themed";
 import Colors from "@/constants/Colors";
 import { useCocktails } from "@/hooks/useCocktails";
 import { useAppStore } from "@/stores/AppStore";
+import { InitializeAppUseCase } from "@/useCases/InitializeAppUseCase";
 import { FontAwesome5 } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
@@ -108,14 +109,41 @@ export default function Home() {
 		setHasError(false);
 
 		try {
+			let currentCategories = categories;
+			let currentIngredients = ingredients;
+			let currentGlasses = glasses;
+			let currentAlcoholicFilters = alcoholicFilters;
+
+			if (currentCategories.length === 0) {
+				const useCase = new InitializeAppUseCase();
+				await useCase.execute();
+
+				const state = useAppStore.getState();
+				currentCategories = state.categories;
+				currentIngredients = state.ingredients;
+				currentGlasses = state.glasses;
+				currentAlcoholicFilters = state.alcoholicFilters;
+			}
+
+			if (currentCategories.length === 0) {
+				throw new Error("Impossibile inizializzare l'app");
+			}
+
 			const cat =
-				categories[Math.floor(Math.random() * categories.length)];
+				currentCategories[
+					Math.floor(Math.random() * currentCategories.length)
+				];
 			const ing =
-				ingredients[Math.floor(Math.random() * ingredients.length)];
-			const gls = glasses[Math.floor(Math.random() * glasses.length)];
+				currentIngredients[
+					Math.floor(Math.random() * currentIngredients.length)
+				];
+			const gls =
+				currentGlasses[
+					Math.floor(Math.random() * currentGlasses.length)
+				];
 			const alc =
-				alcoholicFilters[
-					Math.floor(Math.random() * alcoholicFilters.length)
+				currentAlcoholicFilters[
+					Math.floor(Math.random() * currentAlcoholicFilters.length)
 				];
 
 			setRandomFilters({

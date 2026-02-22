@@ -37,6 +37,7 @@ import Colors from "@/constants/Colors";
 import { Cocktail } from "@/entities/Cocktail";
 import { useCocktails } from "@/hooks/useCocktails";
 import { useAppStore } from "@/stores/AppStore";
+import { InitializeAppUseCase } from "@/useCases/InitializeAppUseCase";
 import {
 	Entypo,
 	FontAwesome5,
@@ -151,6 +152,11 @@ export default function Explore() {
 	} = useCocktails();
 
 	const fetchCurrentData = useCallback(async () => {
+		if (categories.length === 0) {
+			const useCase = new InitializeAppUseCase();
+			await useCase.execute();
+		}
+
 		if (searchText.trim().length > 0) {
 			await searchCocktailsByName(searchText.trim());
 		} else if (selectedFilterValue && activeFilterCategory) {
@@ -174,6 +180,7 @@ export default function Explore() {
 			await searchCocktailsByFirstLetter(letters[0], false);
 		}
 	}, [
+		categories.length,
 		searchText,
 		selectedFilterValue,
 		activeFilterCategory,
