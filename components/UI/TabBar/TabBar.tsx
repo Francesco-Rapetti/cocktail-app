@@ -1,5 +1,5 @@
 import Colors from "@/constants/Colors";
-import { FontAwesome6, Octicons } from "@expo/vector-icons";
+import { FontAwesome5, FontAwesome6, Octicons } from "@expo/vector-icons";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { BlurView } from "expo-blur";
 import React, { useEffect, useRef, useState } from "react";
@@ -111,8 +111,8 @@ export default function TabBar({
 
 	const icons = {
 		index: (props: any) => <Octicons name="home" size={24} {...props} />,
-		search: (props: any) => (
-			<FontAwesome6 name="magnifying-glass" size={24} {...props} />
+		explore: (props: any) => (
+			<FontAwesome5 name="cocktail" size={24} {...props} />
 		),
 		favourites: (props: any) => (
 			<FontAwesome6 name="heart" size={24} {...props} />

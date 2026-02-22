@@ -26,6 +26,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import Button from "@/components/UI/Button";
 import Card from "@/components/UI/Card/Card";
 import SkeletonCard from "@/components/UI/Card/SkeletonCard";
 import Pressable from "@/components/UI/Pressable";
@@ -62,7 +63,7 @@ const FILTER_OPTIONS = [
 	{ id: "glass", label: "Bicchiere" },
 ];
 
-export default function Search() {
+export default function Explore() {
 	const theme = useColorScheme() ?? "light";
 	const insets = useSafeAreaInsets();
 	const router = useRouter();
@@ -86,6 +87,8 @@ export default function Search() {
 	const [selectedFilterValue, setSelectedFilterValue] = useState<
 		string | null
 	>(null);
+
+	const [isAscending, setIsAscending] = useState(true);
 
 	const searchProgress = useSharedValue(0);
 	const filterProgress = useSharedValue(0);
@@ -510,15 +513,48 @@ export default function Search() {
 		[],
 	);
 
+	const sortedCocktails = useMemo(() => {
+		if (!cocktails) return [];
+
+		return [...cocktails].sort((a, b) => {
+			if (isAscending) {
+				return a.strDrink.localeCompare(b.strDrink);
+			} else {
+				return b.strDrink.localeCompare(a.strDrink);
+			}
+		});
+	}, [cocktails, isAscending]);
+
 	return (
 		<View
 			style={[
 				styles.container,
 				{ paddingTop: Constants.statusBarHeight + 10 },
 			]}>
-			<Text maxFontSizeMultiplier={1} style={styles.title}>
-				Cerca
-			</Text>
+			<View style={styles.topBar}>
+				<Text
+					maxFontSizeMultiplier={1}
+					numberOfLines={1}
+					style={styles.title}>
+					Esplora i cocktail
+				</Text>
+
+				<Button
+					label={isAscending ? "A-Z" : "Z-A"}
+					onPress={() => setIsAscending((prev) => !prev)}
+					IconLeft={() => (
+						<FontAwesome6
+							name={
+								isAscending ? "arrow-down-a-z" : "arrow-up-a-z"
+							}
+							size={18}
+							color={Colors[theme].background}
+						/>
+					)}
+					backgroundColor={Colors[theme].tint}
+					labelColor={Colors[theme].background}
+				/>
+			</View>
 
 			<View style={styles.actionsWrapper}>
 				<View style={styles.actionsRow}>
@@ -671,7 +707,7 @@ export default function Search() {
 			</View>
 
 			<Animated.FlatList
-				data={cocktails}
+				data={sortedCocktails}
 				contentContainerStyle={listContentStyle}
 				keyExtractor={keyExtractor}
 				renderItem={renderItem}
@@ -690,11 +726,15 @@ const styles = StyleSheet.create({
 		flex: 1,
 		paddingVertical: 6,
 	},
+	topBar: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		margin: 16,
+	},
 	title: {
 		fontSize: 32,
 		fontWeight: "bold",
-		marginBottom: 16,
-		marginHorizontal: 16,
 	},
 	actionsWrapper: {
 		marginBottom: 16,
